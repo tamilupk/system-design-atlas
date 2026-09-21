@@ -1,0 +1,35 @@
+.node {
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  outline: none;
+}
+
+.node:hover {
+  transform: scale(1.03);
+}
+
+.node:focus-visible .rect {
+  stroke-width: 3;
+  stroke: var(--color-primary, #2563EB);
+}
+
+.selected {
+  transform: scale(1.05);
+}
+
+.highlighted .rect {
+  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.4));
+}
+
+.dimmed {
+  opacity: 0.3;
+}
+
+.label {
+  pointer-events: none;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.rect {
+  transition: stroke-width 0.2s ease, filter 0.2s ease;
+}

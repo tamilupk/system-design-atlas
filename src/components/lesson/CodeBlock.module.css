@@ -1,0 +1,80 @@
+.container {
+  position: relative;
+  background-color: #1e1e1e;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 1rem 0;
+  border: 1px solid var(--color-border);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #404040;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.language {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #a3a3a3;
+  letter-spacing: 0.05em;
+}
+
+.title {
+  font-size: 0.875rem;
+  color: #d4d4d4;
+  font-family: monospace;
+}
+
+.copyButton {
+  background: none;
+  border: none;
+  color: #a3a3a3;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.copyButton:hover {
+  background-color: #404040;
+  color: white;
+}
+
+.floatingCopy {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.successIcon {
+  color: #4ade80;
+}
+
+.pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.pre code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #d4d4d4;
+  tab-size: 2;
+}

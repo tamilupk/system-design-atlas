@@ -1,0 +1,112 @@
+.toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--toolbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  background-color: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-border);
+  z-index: 100;
+}
+
+.brand {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.menuWrapper {
+  position: relative;
+}
+
+.menuButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+  min-height: var(--touch-target);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  background-color: var(--color-action-secondary-hover);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 200px;
+  background-color: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1);
+  z-index: 110;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  min-height: var(--touch-target);
+}
+
+.dropdownItem:hover {
+  background-color: var(--color-action-secondary-hover);
+}
+
+.dropdownItemDanger {
+  composes: dropdownItem;
+  color: var(--color-error);
+}
+
+.fileInput {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    padding: 0 var(--space-4);
+  }
+  .brandFull {
+    display: none;
+  }
+  .brandShort {
+    display: inline;
+  }
+}
+
+@media (min-width: 641px) {
+  .brandShort {
+    display: none;
+  }
+}

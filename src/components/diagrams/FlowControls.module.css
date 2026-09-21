@@ -1,0 +1,47 @@
+.controlsContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  background-color: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--color-border, #e5e5e5);
+  margin: 0 8px;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.step {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted, #737373);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.description {
+  font-size: 14px;
+  color: var(--color-text, #171717);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
