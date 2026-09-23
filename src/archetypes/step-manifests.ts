@@ -1,3 +1,4 @@
+import { chatStepManifest } from './chat/steps-manifest';
 import type { ChapterStepManifest } from '@/types/lesson';
 import { urlShortenerStepManifest } from './url-shortener/steps-manifest';
 
@@ -14,6 +15,7 @@ import { urlShortenerStepManifest } from './url-shortener/steps-manifest';
  */
 export const chapterStepManifests: Readonly<Record<string, ChapterStepManifest>> = {
   'url-shortener': urlShortenerStepManifest,
+  chat: chatStepManifest,
 };
 
 export function getStepManifest(archetypeId: string): ChapterStepManifest | undefined {

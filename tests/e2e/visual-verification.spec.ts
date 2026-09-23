@@ -195,7 +195,7 @@ test.describe('Visual & Responsive Verification', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'System Design Atlas' })).toBeVisible();
-    await expect(page.getByText('1 chapter available · 19 chapters planned')).toBeVisible();
+    await expect(page.getByText('2 chapters available · 18 chapters planned')).toBeVisible();
 
     await page.screenshot({ path: 'test-results/desktop-home.png', fullPage: false });
   });

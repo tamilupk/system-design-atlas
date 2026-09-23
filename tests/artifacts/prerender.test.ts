@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { chatStepManifest } from '../../src/archetypes/chat/steps-manifest';
 
 describe('Static Prerendering and SEO Generation', () => {
   const distDir = path.resolve(process.cwd(), 'dist');
@@ -50,8 +51,25 @@ describe('Static Prerendering and SEO Generation', () => {
     });
   });
 
+  it('prerenders every chat lesson body and includes its route in the sitemap', () => {
+    const sitemap = fs.readFileSync(path.join(distDir, 'sitemap.xml'), 'utf-8');
+    const expectedContent: Record<string, string> = {
+      requirements: '10M daily active users', 'api-data': 'client_message_id', baseline: 'Pause the movie',
+      ordering: 'next_seq', reconnect: 'Close the history/live race', 'presence-receipts': 'stale disconnect',
+      scaling: '2M concurrent', 'hot-room-fanout': 'A room is not an average', operations: '13.89M',
+      resilience: 'Promotion is a protocol', tradeoffs: 'Five-year retention', recap: 'five-minute reconstruction',
+    };
+    chatStepManifest.forEach((step, index) => {
+      const route = `/archetypes/chat/steps/${step.id}`;
+      const html = fs.readFileSync(path.join(distDir, route, 'index.html'), 'utf-8');
+      expect(html).toContain(expectedContent[step.id]);
+      expect(html).toContain(`Step ${index + 1} of ${chatStepManifest.length}`);
+      expect(sitemap).toContain(`${route}</loc>`);
+    });
+  });
+
   it('generates static HTML for all shared concepts with trade-offs and failure modes', () => {
-    const conceptIds = ['cache', 'database-index', 'load-balancer', 'idempotency'];
+    const conceptIds = ['cache', 'database-index', 'load-balancer', 'idempotency', 'message-ordering', 'transactional-outbox'];
 
     conceptIds.forEach(cId => {
       const conceptHtmlPath = path.join(distDir, `concepts/${cId}/index.html`);

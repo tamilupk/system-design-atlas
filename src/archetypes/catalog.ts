@@ -1,3 +1,4 @@
+import { chatMetadata } from './chat/metadata';
 import type { ArchetypeMetadata } from '@/types/archetype';
 import { urlShortenerMetadata } from './url-shortener/metadata';
 
@@ -49,15 +50,7 @@ export const archetypeCatalog: readonly ArchetypeMetadata[] = [
     availability: 'planned',
     tags: ['search', 'elasticsearch', 'autocomplete', 'indexing'],
   },
-  {
-    id: 'chat',
-    title: 'Real-Time Chat',
-    description: 'Design a messaging system with WebSocket connections, presence, delivery receipts, and message persistence. Covers connection management and ordering.',
-    stage: 'foundation',
-    sequence: 7,
-    availability: 'planned',
-    tags: ['websocket', 'messaging', 'real-time', 'presence'],
-  },
+  chatMetadata,
   {
     id: 'ticket-booking',
     title: 'Ticket Booking',

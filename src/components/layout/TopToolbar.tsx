@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Check,
   Keyboard,
+  Github,
   NotebookPen,
   PanelRight,
   PanelLeft,
@@ -26,6 +27,7 @@ import type { ProgressState } from '@/features/progress/types';
 import type { ImportSummary } from '@/features/progress/yaml-transfer';
 import logoUrl from '@/assets/logo.svg';
 import styles from './TopToolbar.module.css';
+import iconButtonStyles from '@/components/ui/IconButton.module.css';
 
 interface ImportPreviewData {
   state: ProgressState;
@@ -208,6 +210,18 @@ export function TopToolbar() {
       )}
 
       <div className={styles.actions}>
+        <a
+          href="https://github.com/tamilupk/system-design-atlas"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View source on GitHub (opens in a new tab)"
+          title="View source on GitHub (opens in a new tab)"
+          className={`${iconButtonStyles.iconButton} ${iconButtonStyles.ghost} ${iconButtonStyles.md} ${styles.actionIconBtn}`}
+        >
+          <span className={iconButtonStyles.iconWrapper}>
+            <Github aria-hidden="true" />
+          </span>
+        </a>
         {lessonNav?.onOpenShortcuts && (
           <IconButton
             icon={<Keyboard size={16} />}

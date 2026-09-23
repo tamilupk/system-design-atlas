@@ -6,7 +6,7 @@ test.describe('System Design Atlas - Core User Journey', () => {
     await page.goto('/');
     await expect(page).toHaveTitle(/System Design Atlas/);
     await expect(page.getByRole('heading', { level: 1, name: 'System Design Atlas' })).toBeVisible();
-    await expect(page.getByText('1 chapter available · 19 chapters planned')).toBeVisible();
+    await expect(page.getByText('2 chapters available · 18 chapters planned')).toBeVisible();
 
     // Verify filters work
     await expect(page.getByText('Foundation & Core Applications')).toBeVisible();
@@ -15,7 +15,7 @@ test.describe('System Design Atlas - Core User Journey', () => {
     await page.getByRole('button', { name: /All/i }).click();
 
     // 2. Start URL shortener
-    const startBtn = page.getByRole('link', { name: 'Start' });
+    const startBtn = page.locator('a[href="/archetypes/url-shortener"]').filter({ hasText: 'Start' });
     await expect(startBtn).toBeVisible();
     await startBtn.click();
 

@@ -21,6 +21,19 @@ Treat this document as the complete chapter implementation checklist. Read it be
 5. **Verify before declaring completion:** run every Part 5 command in order. Inspect the new chapter at desktop sizes (1440×900 and 1366×768), checking long text, tables, code, diagram labels/edges, node inspection, flow playback, keyboard navigation, challenge evaluation, reload/resume, and notes. Mobile is secondary, but content must remain accessible. Check step URLs directly and confirm readable lesson content in generated HTML and entries in `dist/sitemap.xml`.
 6. **Report evidence:** list changed files, commands and results, desktop checks, and any unresolved content or layout limitation. Do not call a chapter complete based only on TypeScript passing. No deployment is required for chapter authoring.
 
+### Choosing and evolving chapter length
+
+There is no fixed minimum, maximum, or preferred step count in the runtime. Published chapters must tell a complete story; the one-step test fixture demonstrates wiring only. Do not pad a six-step lesson to nine, compress a complex system to nine, or replace nine with another universal target.
+
+- Give each step one primary learning objective and a question the reader can answer afterward. A focused six-step chapter may combine requirements with API/data, while a broad chapter can separate recovery, presence, fan-out, operations, and regional failover.
+- Split when independent decisions, exercises, or failure models compete for attention. Add explanation, counterexamples, and checks of understanding where needed; merely moving paragraphs into thin pages is not an improvement.
+- Merge when adjacent steps repeat the same objective or lack enough substance to stand alone. Do not use word counts, equal page lengths, or one diagram per step as quality proxies.
+- Reuse diagram states when they still explain the decision. Add states and challenges when the learning trajectory needs them; their counts should also follow the content, not a quota.
+- Review the full sequence for prerequisites, repetition, reading load, and a clear return to the final design. Update `estimatedMinutes` to reflect reading and exercise time; it is an estimate, not a pacing promise.
+- When expanding a published chapter, preserve existing semantic step IDs, challenge IDs, and their meanings. Retitle or reorder only while keeping the original topic recognizable. Give extracted topics new IDs; never repurpose an old ID for an unrelated lesson. Increment `contentVersion` for a substantive revision.
+- Register the revised manifest and component map together. Completion and numbering derive from the current step list: existing completions, notes, and resume URLs remain attached to their IDs; added steps start incomplete. A previously complete chapter may therefore become partially complete. Do not copy old completion marks onto new steps or reset reader history. `contentVersion` is content metadata, not a progress-schema migration.
+- Verify all step routes, previous/next navigation, outline, resume, notes, challenges, progress denominator, and prerender/sitemap output. Derive count assertions from the chapter manifest; keep historical ID lists only in explicit compatibility tests. Test a saved pre-expansion state when changing a shipped trajectory. Never add runtime count limits merely to enforce a writing preference.
+
 Fresh checkout: use Node.js 22 and `npm ci`. Install the browser once with `npx playwright install chromium` (CI uses `--with-deps`). See Part 5 for the full verification sequence.
 
 ---
@@ -42,7 +55,7 @@ Generate the complete, mathematically grounded curriculum specification followin
 2. Mathematical Rigor: Do not use vague estimates. Compute realistic writes/sec, peak reads/sec, payload sizes, working-set RAM (80/20 rule), network egress bandwidth, and 3-5 year storage retention.
 3. Show Your Work: Every number must state its assumptions and its derivation. Write "100M DAU × 2 actions/day ÷ 86400s ≈ 2,300 avg writes/sec; ×3 peak factor ≈ 7,000 peak writes/sec", never just "7,000 writes/sec". The same applies to memory, latency, storage, and cost figures.
 4. Realistic Distributed Failure Modes: Include split-brain, network partitions, replica lag, thundering herds, hot partitions, and cache invalidation races — where they actually apply to this system.
-5. Progressive Disclosure: Build from a simple baseline to an advanced architecture over 8 to 9 steps.
+5. Progressive Disclosure: Choose the step count from the learning objectives, not a fixed quota. A focused system may need about 6 steps; a broader system may need 10–15 or more. These are examples, not bounds. Start with the simplest correct baseline and add a step when it introduces a distinct decision, invariant, failure mode, or exercise. Merge shallow steps; split overloaded ones. Explain why the chosen boundaries fit this system.
 6. Architecture Follows the System: The step trajectory below is a **suggested outline**, not a rule. Do not add Redis, an API gateway, sharding, or read replicas just because the outline mentions them. Messaging, collaboration, stream processing, storage, and GenAI systems each deserve their own middle steps (ordering guarantees, presence and CRDTs, watermarks and backpressure, compaction and repair, token budgets and model routing). Keep the consistent shape — requirements → API/data → baseline → domain core → scale → reliability → trade-offs → recap — and vary the substance.
 7. Honesty About Numbers: Label simulated or back-of-envelope results as illustrative (for example "Illustrative estimate, not a measured benchmark"). Never present a hard-coded latency or cost figure as a measurement. Qualify strong claims ("in our experience", "at this scale", "typically") or cite the mechanism that produces the number.
 8. No Universal Answers: Distinguish what is preferred **for this scenario** from what is universally correct. A choice that wins at 100k QPS may be wrong at 1k QPS; say so.
@@ -60,8 +73,8 @@ Generate the complete, mathematically grounded curriculum specification followin
 - estimatedMinutes: integer (e.g. 35, 45)
 - tags: string array of 5-8 technical keywords (e.g. ["rate-limiter", "redis", "token-bucket", "distributed-systems", "concurrency"])
 
-#### SECTION B: Lesson Trajectory (8–9 steps, suggested shape)
-Provide an array of 8 to 9 step definitions:
+#### SECTION B: Lesson Trajectory (variable length, justified pacing)
+First give a brief rationale for the chosen step count and boundaries. Then provide the complete array of step definitions:
 1. id: semantic kebab-case string, **stable forever** (e.g. "requirements", "api-data", "baseline", "algorithm", "caching", "scaling", "resilience", "tradeoffs", "recap"). Reader progress is keyed by this id — never rename it later.
 2. title: Display title (e.g. "Requirements & Scale")
 3. shortTitle: 1-2 words for breadcrumbs & sidebar outline (e.g. "Requirements")
@@ -71,19 +84,19 @@ Provide an array of 8 to 9 step definitions:
 7. flowSequenceId: optional flow sequence **declared by that same diagram state** to auto-select/highlight (e.g. "allowed-flow", "throttled-flow")
 8. concepts: array of concept IDs relevant to this step. Reuse registered IDs where they genuinely apply: "cache", "database-index", "load-balancer", "idempotency". If introducing a new concept, name it in kebab-case and define it in Section E.
 
-Suggested trajectory — adapt the middle steps to the system; do not force Redis, a gateway, sharding, or read replicas where they do not belong:
-- Step 1: Requirements & Scale (Functional/non-functional requirements, mathematical scale calculations with stated assumptions)
-- Step 2: API & Data Model (REST/gRPC endpoints, database schema, primary/partition keys)
-- Step 3: Baseline Architecture (Minimal working design for *this* system)
-- Step 4: Core Engine / Algorithm (The domain-specific heart — e.g. Token Bucket vs Sliding Window Log, ordering guarantees, watermarking, compaction)
-- Step 5: Performance / State (Caching, or the state-management concern that actually dominates this system)
-- Step 6: Horizontal Scaling & Partitioning (Only if the system needs it; otherwise the relevant scale axis)
-- Step 7: Reliability & Failure Modes (Circuit breakers, failover, fallback strategies, partition tolerance)
-- Step 8: Architectural Trade-offs & Dilemmas (Comparison tables and trade-off analysis)
-- Step 9: Recap & Interview Follow-ups (Architecture summary, senior interview follow-up curveball probes)
+Suggested coverage areas — these are not required one-to-one steps. Combine related areas for a focused chapter or split substantial areas into multiple lessons. Preserve requirements, a correct baseline, domain reasoning, relevant scaling/failure analysis, trade-offs, and synthesis somewhere in the trajectory; do not force Redis, a gateway, sharding, or read replicas where they do not belong:
+- Coverage: Requirements & Scale (Functional/non-functional requirements, mathematical scale calculations with stated assumptions)
+- Coverage: API & Data Model (REST/gRPC endpoints, database schema, primary/partition keys)
+- Coverage: Baseline Architecture (Minimal working design for *this* system)
+- Coverage: Core Engine / Algorithm (The domain-specific heart — e.g. Token Bucket vs Sliding Window Log, ordering guarantees, watermarking, compaction)
+- Coverage: Performance / State (Caching, or the state-management concern that actually dominates this system)
+- Coverage: Horizontal Scaling & Partitioning (Only if the system needs it; otherwise the relevant scale axis)
+- Coverage: Reliability & Failure Modes (Circuit breakers, failover, fallback strategies, partition tolerance)
+- Coverage: Architectural Trade-offs & Dilemmas (Comparison tables and trade-off analysis)
+- Coverage: Recap & Interview Follow-ups (Architecture summary, senior interview follow-up curveball probes)
 
 #### SECTION C: Diagram States & Specifications
-Define 2-3 visual diagram states (e.g. "baseline", "scaled").
+Define the visual diagram states needed to explain the trajectory (often 2–3 initially, more when distinct architectural changes warrant them). Reuse a state across steps where appropriate; do not add components merely to make a new diagram.
 For each state, provide:
 1. Nodes:
    - id: unique string (e.g. "client", "api-gateway", "app-server", "redis-cluster", "primary-db")
@@ -121,7 +134,7 @@ For each state, provide:
      * highlightNodeIds: array of node IDs glowing during this event
 
 #### SECTION D: Interactive Decision Challenges
-Define 1-2 senior FAANG decision challenges:
+Define decision challenges at consequential architectural forks (often 1–2 initially; add more when they test distinct reasoning rather than repeat a lesson):
 - id: kebab-case string (e.g. "token-bucket-storage")
 - title: Dilemma title (e.g. "Architectural Dilemma: Centralized Redis vs Local Memory Rate Limiting")
 - category: Category name (e.g. "Concurrency & Storage")

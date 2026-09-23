@@ -77,6 +77,10 @@ interface UserNotes {
 
 **Challenges are namespaced by archetype.** Challenge IDs are only unique *within* a chapter, so two chapters may both define `storage-strategy`; keying them globally would let one chapter's answer overwrite the other's. Read them with `getChallengeProgress(state, archetypeId, challengeId)` from `selectors.ts` — both keys are required. The archetype ID reaches the challenge UI through `LessonProvider` (`src/components/lesson/LessonContext.tsx`), not through a prop on `<DecisionChallenge />`.
 
+## Chapter expansion
+
+Adding steps does not change the storage schema. Keep existing semantic step and challenge IDs so completion timestamps, notes, attempts, and resume links remain valid. Newly introduced steps are incomplete until the reader completes them. Totals use the current manifest: for example, nine saved completions become 9/12 (75%) after adding three steps, without erasing any learning history. A lesson `contentVersion` bump does not reset or migrate progress.
+
 ## Validation Rules
 
 `validateProgressState(data)` returns `{ valid: true, state }` or `{ valid: false, error }`. A document is rejected when:

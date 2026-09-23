@@ -108,7 +108,7 @@ Progress is saved in `localStorage` under the versioned key `system-design-atlas
 
 `npm run build` is `tsc -b && vite build && vite-node scripts/prerender-cli.ts`. The prerender step post-processes `dist/` so every public route has real, crawlable HTML:
 
-- Emits one `index.html` per route (currently 15: home, the `url-shortener` overview, its 9 steps, and the 4 concept pages) into path-shaped directories.
+- Emits one `index.html` per route (currently 30: home, the `url-shortener` and `chat` overviews, their 21 steps, and the 6 concept pages) into path-shaped directories.
 - Injects per-route `<title>`, meta description, canonical URL, Open Graph tags, and `TechArticle` + `BreadcrumbList` JSON-LD.
 - Injects a static `fallbackHtml` payload inside `#root` so the page has readable content before hydration.
 - Generates `sitemap.xml` (with `changefreq`/`priority` per route) and `robots.txt`.
@@ -132,6 +132,8 @@ Diagrams are hand-authored data rendered as inline SVG by React components in `s
 **Playback behavior:** when a sequence is playing, a `setInterval` advances one flow event every **1500 ms** and stops at the end of the sequence. A `flowRunId` counter forces a clean restart when the user replays or switches sequences.
 
 **Flow tab bar:** the sequence selector is a floating pill bar (`height: 28px`) pinned to the top-left of the canvas. It scrolls horizontally when sequences overflow, and its scrollbar is suppressed across all engines (`scrollbar-width`, `-ms-overflow-style`, and `::-webkit-scrollbar` set to `display: none !important`) so the bar reads as a control strip rather than a scrollable region.
+
+Chapter lengths are variable: URL Shortener has 9 steps and Real-Time Chat has 12. Manifests, lesson definitions, navigation, progress totals, and prerendering use the actual step list; there is no fixed chapter-length contract.
 
 ## Lesson Shell
 
@@ -161,6 +163,10 @@ The application features AI Chat Assistance (`src/features/chat-assist/`).
 - **CSS Modules**: All components use CSS modules for scoped styling (e.g., `Button.module.css`).
 - **Design Tokens**: Global design tokens (colors, spacing, typography) are defined as CSS variables in `src/styles/tokens.css`.
 - **Light Theme**: The application currently targets a single light theme.
+
+The shared toolbar includes an accessible icon-only GitHub source link immediately before the keyboard-shortcuts control; it opens the repository in a new tab.
+
+At phone widths, the shared toolbar wraps its navigation and actions into rows so all controls remain reachable without horizontal page overflow.
 
 ## Accessibility Approach
 
