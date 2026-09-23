@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#171717"/>
-  <path d="M8 22V10h2.5l5.5 8.5V10H19v12h-2.5L11 13.5V22H8Z" fill="#fff"/>
-  <circle cx="23" cy="13" r="2.5" fill="#fff"/>
-  <rect x="21.5" y="17" width="3" height="5" rx="1.5" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="16 15 136 136">
+<title>System Design Atlas</title>
+<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M24 40 L64 26 L104 40 L144 26 V126 L104 140 L64 126 L24 140 Z" fill="#F6F7F9" stroke="#171717" stroke-width="5"/>
+<path d="M64 27 V126 M104 40 V139" fill="none" stroke="#171717" stroke-width="3"/>
+<path d="M44 104 V75 H84 V96 H124 V60" fill="none" stroke="#2563EB" stroke-width="6"/>
+<rect x="36" y="96" width="16" height="16" rx="4" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+<rect x="76" y="67" width="16" height="16" rx="4" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+<rect x="116" y="52" width="16" height="16" rx="4" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+</g>
 </svg>
