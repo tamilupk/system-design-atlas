@@ -2,9 +2,9 @@
   position: relative;
   height: var(--toolbar-height);
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   padding: 0 var(--space-4);
   background-color: var(--color-surface);
   border-bottom: var(--border-width) solid var(--color-border);
@@ -92,6 +92,7 @@
 
 /* Center Section: Decoupled Step Navigation & Expandable Mark Complete */
 .centerSection {
+  grid-column: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,9 +100,10 @@
 }
 
 .stepNavGroup {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto var(--space-8);
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .stepNav {
@@ -141,6 +143,8 @@
 }
 
 .stepCounter {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono, monospace);
@@ -152,6 +156,7 @@
 
 /* Expandable Mark Complete Button: Default circular icon pill, expands label on hover */
 .markCompleteBtn {
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -223,6 +228,8 @@
 
 /* Actions Right */
 .actions {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -330,8 +337,9 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .toolbar {
+    display: flex;
     height: auto;
     min-height: var(--toolbar-height);
     flex-wrap: wrap;
@@ -348,6 +356,9 @@
     justify-content: flex-end;
   }
 
+}
+
+@media (max-width: 640px) {
   .logoImage {
     height: 30px;
   }

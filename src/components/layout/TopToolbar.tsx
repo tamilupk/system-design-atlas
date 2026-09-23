@@ -178,7 +178,10 @@ export function TopToolbar() {
                 <span>Prev</span>
               </button>
 
-              <span className={styles.stepCounter}>
+              <span
+                className={styles.stepCounter}
+                style={{ minWidth: `calc(${String(lessonNav.stepNav.totalSteps).length * 2 + 3}ch + var(--space-3))` }}
+              >
                 {lessonNav.stepNav.currentIndex} / {lessonNav.stepNav.totalSteps}
               </span>
 

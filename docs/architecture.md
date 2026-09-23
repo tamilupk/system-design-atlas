@@ -166,7 +166,7 @@ The application features AI Chat Assistance (`src/features/chat-assist/`).
 
 The shared toolbar includes an accessible icon-only GitHub source link immediately before the keyboard-shortcuts control; it opens the repository in a new tab.
 
-At phone widths, the shared toolbar wraps its navigation and actions into rows so all controls remain reachable without horizontal page overflow.
+On desktop, equal flexible side columns anchor step navigation independently of breadcrumb length; the counter reserves space for the chapter’s maximum digits. At tablet and phone widths, the shared toolbar wraps its navigation and actions into rows so all controls remain reachable without horizontal page overflow.
 
 ## Accessibility Approach
 
