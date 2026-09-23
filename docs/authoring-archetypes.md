@@ -2,9 +2,26 @@
 
 This is the **single source of truth** for authoring and building new system design chapters (archetypes) in System Design Atlas.
 
-It provides a seamless, zero-friction two-stage workflow:
-1. **Part 1: Content Generation (ChatGPT / Claude)** — A hardened master prompt that forces the LLM to output mathematically rigorous curriculum content in the exact schema needed by our TypeScript contracts.
-2. **Part 2: Coding Agent Implementation (Antigravity)** — The handoff instructions and copy-pasteable file templates that allow an AI coding agent to implement the archetype in one shot with zero compiler or runtime errors.
+It provides a two-stage workflow:
+1. **Part 1: Content Generation (ChatGPT / Claude)** — A master prompt that asks the LLM for mathematically grounded curriculum content in the exact schema our TypeScript contracts expect.
+2. **Part 2: Coding Agent Implementation** — The handoff instructions and file templates that let a coding agent implement the archetype against those contracts.
+
+The templates are checked against the real type definitions, but they are **starting points, not guarantees**. An LLM will still produce content that does not typecheck or that references IDs which do not exist. Part 5 lists the acceptance commands, including `validateArchetypeModule`, which is what actually catches those mistakes — run it, do not assume a clean first pass.
+
+---
+
+## Required workflow for a coding agent
+
+Treat this document as the complete chapter implementation checklist. Read it before writing content or code; inspect the current types and registered IDs rather than relying on names from a previous conversation.
+
+1. **Define the content:** choose stable chapter/step/challenge IDs and an unused catalog sequence. Generate the specification using Part 1, then review assumptions, calculations, failure modes, and technical claims. The executable example below has one step for brevity; a published chapter needs the complete reviewed learning trajectory.
+2. **Preserve the reference UI:** use URL Shortener as the visual reference and compose steps from `@/components/lesson/StepComponents`. Reuse the existing `src/pages/LessonPage.tsx` shell, diagram canvas, outline, navigation, notes, completion, challenges, and concept inspector automatically through the registry. Do not create another route shell or copy chapter-private CSS. Use `src/styles/tokens.css` for any necessary custom widgets, kept inside the new chapter. Existing reference steps with private styles are not templates for new chapters.
+3. **Implement the chapter:** follow the file contracts in Part 3. Keep manifests and metadata lightweight; keep lesson UI behind the dynamic import. Never change shared pages to branch on the new chapter ID. Only extend a shared component when it provides a reusable capability.
+4. **Register all three entries:** metadata in `src/archetypes/catalog.ts`, the default-exporting lazy loader in `src/archetypes/registry.ts`, and the data-only manifest in `src/archetypes/step-manifests.ts`. Register new shared concepts separately. Keep incomplete chapters planned; publish as available only with complete content and passing checks.
+5. **Verify before declaring completion:** run every Part 5 command in order. Inspect the new chapter at desktop sizes (1440×900 and 1366×768), checking long text, tables, code, diagram labels/edges, node inspection, flow playback, keyboard navigation, challenge evaluation, reload/resume, and notes. Mobile is secondary, but content must remain accessible. Check step URLs directly and confirm readable lesson content in generated HTML and entries in `dist/sitemap.xml`.
+6. **Report evidence:** list changed files, commands and results, desktop checks, and any unresolved content or layout limitation. Do not call a chapter complete based only on TypeScript passing. No deployment is required for chapter authoring.
+
+Fresh checkout: use Node.js 22 and `npm ci`. Install the browser once with `npx playwright install chromium` (CI uses `--with-deps`). See Part 5 for the full verification sequence.
 
 ---
 
@@ -23,8 +40,13 @@ Generate the complete, mathematically grounded curriculum specification followin
 ### Requirements for Content Quality:
 1. Target Audience: Engineers with 10+ years of experience preparing for Senior/Staff/Principal system design interviews.
 2. Mathematical Rigor: Do not use vague estimates. Compute realistic writes/sec, peak reads/sec, payload sizes, working-set RAM (80/20 rule), network egress bandwidth, and 3-5 year storage retention.
-3. Realistic Distributed Failure Modes: Include split-brain, network partitions, replica lag, thundering herds, hot partitions, and cache invalidation races.
-4. Progressive Disclosure: Build from a simple baseline to an advanced multi-tier architecture over 8 to 9 steps.
+3. Show Your Work: Every number must state its assumptions and its derivation. Write "100M DAU × 2 actions/day ÷ 86400s ≈ 2,300 avg writes/sec; ×3 peak factor ≈ 7,000 peak writes/sec", never just "7,000 writes/sec". The same applies to memory, latency, storage, and cost figures.
+4. Realistic Distributed Failure Modes: Include split-brain, network partitions, replica lag, thundering herds, hot partitions, and cache invalidation races — where they actually apply to this system.
+5. Progressive Disclosure: Build from a simple baseline to an advanced architecture over 8 to 9 steps.
+6. Architecture Follows the System: The step trajectory below is a **suggested outline**, not a rule. Do not add Redis, an API gateway, sharding, or read replicas just because the outline mentions them. Messaging, collaboration, stream processing, storage, and GenAI systems each deserve their own middle steps (ordering guarantees, presence and CRDTs, watermarks and backpressure, compaction and repair, token budgets and model routing). Keep the consistent shape — requirements → API/data → baseline → domain core → scale → reliability → trade-offs → recap — and vary the substance.
+7. Honesty About Numbers: Label simulated or back-of-envelope results as illustrative (for example "Illustrative estimate, not a measured benchmark"). Never present a hard-coded latency or cost figure as a measurement. Qualify strong claims ("in our experience", "at this scale", "typically") or cite the mechanism that produces the number.
+8. No Universal Answers: Distinguish what is preferred **for this scenario** from what is universally correct. A choice that wins at 100k QPS may be wrong at 1k QPS; say so.
+9. Concepts: Reuse the shared concepts already registered in `src/concepts/registry.ts` ("cache", "database-index", "load-balancer", "idempotency") where they genuinely apply. If the chapter needs a new one, define it in Section E as a **shared** concept (reusable explanation, trade-offs, failure modes) plus a **chapter-specific** context entry (how it behaves here, example data, edge cases). Never fold chapter-specific detail into the shared explanation.
 
 ### Produce your output structured into the following exact sections:
 
@@ -38,24 +60,24 @@ Generate the complete, mathematically grounded curriculum specification followin
 - estimatedMinutes: integer (e.g. 35, 45)
 - tags: string array of 5-8 technical keywords (e.g. ["rate-limiter", "redis", "token-bucket", "distributed-systems", "concurrency"])
 
-#### SECTION B: 9-Step Lesson Trajectory
+#### SECTION B: Lesson Trajectory (8–9 steps, suggested shape)
 Provide an array of 8 to 9 step definitions:
-1. id: semantic kebab-case string (e.g. "requirements", "api-data", "baseline", "algorithm", "caching", "scaling", "resilience", "tradeoffs", "recap")
+1. id: semantic kebab-case string, **stable forever** (e.g. "requirements", "api-data", "baseline", "algorithm", "caching", "scaling", "resilience", "tradeoffs", "recap"). Reader progress is keyed by this id — never rename it later.
 2. title: Display title (e.g. "Requirements & Scale")
 3. shortTitle: 1-2 words for breadcrumbs & sidebar outline (e.g. "Requirements")
 4. objective: 1 clear learning sentence
-5. diagramStateId: diagram state ID ("empty" for text-only steps, or e.g. "baseline", "with-cache", "scaled")
-6. highlightedNodes: array of node IDs to focus in this step (e.g. ["client", "gateway", "redis-cluster"])
-7. flowSequenceId: optional flow sequence to auto-select/highlight (e.g. "allowed-request", "rate-limited-request")
-8. concepts: array of concept IDs relevant to this step. Use existing IDs when applicable: "cache", "database-index", "load-balancer", "idempotency". If introducing a new concept, name it in kebab-case.
+5. diagramStateId: diagram state ID (omit for text-only steps; otherwise e.g. "baseline", "with-cache", "scaled")
+6. highlightedNodes: array of node IDs **that exist in that diagram state** to focus in this step (e.g. ["client", "gateway", "redis"])
+7. flowSequenceId: optional flow sequence **declared by that same diagram state** to auto-select/highlight (e.g. "allowed-flow", "throttled-flow")
+8. concepts: array of concept IDs relevant to this step. Reuse registered IDs where they genuinely apply: "cache", "database-index", "load-balancer", "idempotency". If introducing a new concept, name it in kebab-case and define it in Section E.
 
-Standard 9-Step Sequence Blueprint:
-- Step 1: Requirements & Scale (Functional/non-functional requirements, mathematical scale calculations)
+Suggested trajectory — adapt the middle steps to the system; do not force Redis, a gateway, sharding, or read replicas where they do not belong:
+- Step 1: Requirements & Scale (Functional/non-functional requirements, mathematical scale calculations with stated assumptions)
 - Step 2: API & Data Model (REST/gRPC endpoints, database schema, primary/partition keys)
-- Step 3: Baseline Architecture (Minimal working design: Client -> Gateway -> Service -> Database)
-- Step 4: Core Engine / Algorithm (Deep dive on domain-specific algorithm, e.g. Token Bucket vs Sliding Window Log)
-- Step 5: Caching & Performance (Redis cache-aside, write-through, TTL, eviction policies)
-- Step 6: Horizontal Scaling & Partitioning (Consistent hashing, routing tier, hot partition mitigation)
+- Step 3: Baseline Architecture (Minimal working design for *this* system)
+- Step 4: Core Engine / Algorithm (The domain-specific heart — e.g. Token Bucket vs Sliding Window Log, ordering guarantees, watermarking, compaction)
+- Step 5: Performance / State (Caching, or the state-management concern that actually dominates this system)
+- Step 6: Horizontal Scaling & Partitioning (Only if the system needs it; otherwise the relevant scale axis)
 - Step 7: Reliability & Failure Modes (Circuit breakers, failover, fallback strategies, partition tolerance)
 - Step 8: Architectural Trade-offs & Dilemmas (Comparison tables and trade-off analysis)
 - Step 9: Recap & Interview Follow-ups (Architecture summary, senior interview follow-up curveball probes)
@@ -88,6 +110,7 @@ For each state, provide:
    - to: target node ID
    - label: protocol or action (e.g. "HTTPS", "gRPC", "TCP/Redis", "SQL")
    - style: "solid" | "dashed"
+   - Edges are **directed**: a flow event animates the packet along the edge's `from`→`to` direction. Model a response as its own edge pointing back (e.g. a dashed `gw-to-client`), never by reusing the request edge — reusing it animates the response backwards.
 3. Flow Sequences (Interactive packet flows):
    - id: kebab-case string (e.g. "allowed-flow", "throttled-flow")
    - title: Display title (e.g. "1. Request Allowed (Tokens Available)", "2. Request Throttled (429 Rate Limited)")
@@ -116,15 +139,28 @@ Define 1-2 senior FAANG decision challenges:
   * seniorRationale: The senior FAANG rationale explaining why this option is optimal or why it fails at scale
   * tradeOffSummary: "Pros: ... Cons: ..."
 
-#### SECTION E: Concept Context
-For each concept linked in lesson steps (e.g. "cache", "load-balancer", "idempotency", "database-index"):
-- conceptId: string
-- chapterRole: How this concept specifically operates in this system
-- exampleData: Concrete configuration, Redis command, SQL schema snippet, or payload
+#### SECTION E: Concepts
+Two different things, kept separate on purpose:
+
+**E1. Shared concept definitions** — only for concepts that are genuinely reusable across chapters. Already registered: "cache", "database-index", "load-balancer", "idempotency". If this chapter needs a new one, provide the full `SharedConcept`:
+- id: kebab-case, stable (it is used in concept URLs and referenced by diagram nodes)
+- title, summary: 1-line hook
+- explanation: 2-4 paragraphs of chapter-independent explanation
+- role: what the component does architecturally, in general
+- tradeoffs: array of { aspect, pros, cons }
+- failureModes: array of realistic failure modes
+- relatedConceptIds: other registered concept IDs
+
+**E2. Chapter-specific concept context** — for every concept linked from Section B, including the reused ones:
+- conceptId: must match a registered concept ID
+- chapterRole: how this concept specifically operates in *this* system
+- exampleData: concrete configuration, Redis command, SQL schema snippet, or payload
 - specificConsiderations: 3-5 bullet points of domain-specific edge cases
 
+Never put chapter-specific detail into E1, and never duplicate the generic explanation into E2.
+
 #### SECTION F: Step-by-Step Explanatory Markdown Content
-For each of the 9 steps, provide:
+For each step, provide:
 - Main conceptual explanation with mathematical calculations
 - Trade-off comparison tables (Aspect, Pros, Cons)
 - Code snippets (e.g. Lua scripts for Redis atomic ops, SQL schemas, API definitions)
@@ -134,27 +170,34 @@ For each of the 9 steps, provide:
 
 ---
 
-## Part 2: Building with Antigravity (The Handoff Prompt)
+## Part 2: Building with a Coding Agent (The Handoff Prompt)
 
-Once ChatGPT or Claude produces the output, copy and paste it into **Antigravity** along with this prompt:
+Once ChatGPT or Claude produces the output, copy and paste it into your coding agent along with this prompt:
 
 ````markdown
 Please implement the new archetype "[ARCHETYPE_NAME]" using the framework guidelines in docs/authoring-archetypes.md:
 
-1. Create `src/archetypes/[ID]/` with the 7 required files:
+1. Create `src/archetypes/[ID]/` with these files:
    - `metadata.ts`
    - `lesson.ts`
    - `challenges.ts`
    - `concept-context.ts`
    - `diagrams.ts`
-   - `steps/` (all 9 step components using `<StepContent>`, `<StepSection>`, `<Callout>`, `<TradeoffTable>`, `<DecisionChallenge>`, `<CodeBlock>`, `<CardGrid>`, `<Card>`)
+   - `steps-manifest.ts` (data-only id/title/shortTitle list, mirroring `lesson.ts` in order)
+   - `steps/` (one component per step, composed from `@/components/lesson/StepComponents`)
    - `steps/index.ts`
-   - `index.ts` (exporting default module: ArchetypeModule)
+   - `index.ts` (default-exporting `ArchetypeModule`, including `challenges`)
+   Keep genuinely chapter-specific widgets in `src/archetypes/[ID]/components/`. Do not copy another chapter's private files or CSS.
 2. Register the archetype:
-   - In `src/archetypes/catalog.ts`: import `[ID]Metadata` and replace or update the planned entry with `availability: 'available'`.
-   - In `src/archetypes/registry.ts`: add the lazy loader function returning `mod.default`.
-3. Verify the build:
-   - Run `npm run typecheck && npm test && npm run build` to verify zero errors and static prerendering.
+   - `src/archetypes/catalog.ts`: import `[ID]Metadata` and replace the planned entry with it (`availability: 'available'`).
+   - `src/archetypes/registry.ts`: add the lazy loader returning `mod.default`.
+   - `src/archetypes/step-manifests.ts`: add the `[ID]` → manifest entry.
+   - If the chapter introduces new shared concepts, register them in `src/concepts/registry.ts`.
+3. Validate and verify:
+   - Register the catalog, loader, and manifest; the shipped-archetypes tests automatically validate every registered chapter.
+   - Preserve the URL Shortener look and feel using shared StepComponents and the existing LessonPage shell; do not introduce a chapter-specific page layout.
+   - Run `npm run typecheck && npm run lint && npm test && npm run build && npm run test:build && npm run test:e2e`. Install Chromium first if needed. Fix failures; do not assume a clean first pass.
+   - Perform the desktop and content checks in the Required workflow above and report the results.
 
 Here is the specification:
 [PASTE CHATGPT / CLAUDE OUTPUT HERE]
@@ -164,7 +207,7 @@ Here is the specification:
 
 ## Part 3: Code Templates & Exact Type Contracts
 
-To ensure coding agents generate syntactically correct code on the first attempt without compilation errors, follow these exact TypeScript file templates.
+To give coding agents a correct starting point, follow these TypeScript file templates. Together they form a complete one-step example, not a finished curriculum. They mirror the real contracts in `src/types/`, but every ID inside them is illustrative — replace them with the chapter's own IDs and keep them consistent across all files. `validateArchetypeModule` (Part 5) is what verifies the consistency.
 
 ### 1. `src/archetypes/<id>/metadata.ts`
 ```typescript
@@ -175,7 +218,7 @@ export const rateLimiterMetadata: ArchetypeMetadata = {
   title: 'Distributed Rate Limiter',
   description: 'Design a high-throughput, low-latency rate limiter capable of protecting multi-tier APIs with token bucket, sliding window, and Redis Lua scripts.',
   stage: 'foundation', // 'foundation' | 'advanced' | 'genai'
-  sequence: 2,
+  sequence: 99, // Example only: choose an unused position in the real catalog.
   availability: 'available', // 'available' | 'planned'
   estimatedMinutes: 40,
   tags: ['rate-limiter', 'redis', 'token-bucket', 'concurrency', 'distributed-systems'],
@@ -197,60 +240,44 @@ export const rateLimiterLesson: LessonDefinition = {
   archetypeId: 'rate-limiter',
   title: 'Distributed Rate Limiter',
   contentVersion: 1,
-  steps: [
-    {
-      id: 'requirements',
-      title: 'Requirements & Scale',
-      shortTitle: 'Requirements',
-      objective: 'Define throughput requirements, accuracy trade-offs, and storage sizing for high-volume API rate limiting.',
-      diagramStateId: 'empty',
-      concepts: [],
-    },
-    {
-      id: 'baseline',
-      title: 'Baseline Architecture',
-      shortTitle: 'Baseline',
-      objective: 'Build a minimal rate limiting proxy in front of application services.',
-      diagramStateId: 'baseline',
-      highlightedNodes: ['client', 'gateway', 'service'],
-      flowSequenceId: 'allowed-flow',
-      concepts: ['load-balancer'],
-    },
-    {
-      id: 'algorithm',
-      title: 'Rate Limiting Algorithms',
-      shortTitle: 'Algorithms',
-      objective: 'Compare Token Bucket, Leaky Bucket, Fixed Window Counter, and Sliding Window Log.',
-      diagramStateId: 'baseline',
-      concepts: [],
-    },
-    {
-      id: 'distributed-cache',
-      title: 'Distributed State with Redis',
-      shortTitle: 'Redis State',
-      objective: 'Implement atomic rate limiting using Redis Cluster, Lua scripts, and pipeline batching.',
-      diagramStateId: 'scaled',
-      highlightedNodes: ['cache-node'],
-      flowSequenceId: 'throttled-flow',
-      concepts: ['cache'],
-    },
-    // ... complete all 9 steps
-  ],
+  steps: [{
+    id: 'algorithm',
+    title: 'Rate Limiting Algorithms',
+    shortTitle: 'Algorithms',
+    objective: 'Compare rate limiting algorithms and their distributed state trade-offs.',
+    diagramStateId: 'scaled',
+    highlightedNodes: ['redis'],
+    flowSequenceId: 'throttled-flow',
+    concepts: ['cache', 'load-balancer'],
+  }],
 };
 ```
+
+> [!IMPORTANT]
+> Every `id` above must line up with another file, or the chapter silently breaks:
+> - `archetypeId` must equal `metadata.id`.
+> - `diagramStateId` must be a key of `diagrams.states` (`'empty'` is reserved for text-only steps).
+> - `highlightedNodes` must be node IDs **inside that diagram state**, and `flowSequenceId` must be a flow sequence **declared by that same state**.
+> - `concepts` must be registered in `src/concepts/registry.ts` (see Part 4, Step 3).
+> - Each `id` must have a matching key in `steps/index.ts`, an entry in `steps-manifest.ts`, and a component.
+>
+> `validateArchetypeModule` checks all of these; run it rather than eyeballing the IDs.
+
+> [!CAUTION]
+> **Step IDs are persisted.** Reader progress is stored per `archetypeId` + `stepId`, so renaming a step ID orphans that step's saved visited/completed state for every existing reader. Treat step IDs as append-only: add new steps freely, but never rename them without a migration. Reordering preserves keyed progress but changes the learning sequence.
 
 ---
 
 ### 3. `src/archetypes/<id>/challenges.ts`
 ```typescript
-import type { ChallengeDefinition } from '@/types/challenge';
+import type { ChallengeMap } from '@/types/challenge';
 
-export const rateLimiterChallenges: Record<string, ChallengeDefinition> = {
+export const rateLimiterChallenges: ChallengeMap = {
   'storage-strategy': {
     id: 'storage-strategy',
     title: 'Architectural Dilemma: Centralized Redis vs Local Memory Rate Limiting',
     category: 'State & Concurrency',
-    scenario: 'Your system receives 500,000 QPS across 200 stateless gateway instances. You must enforce a strict per-user rate limit of 100 requests/minute without adding more than 2ms p99 latency to the API gateway path.',
+    scenario: 'Your system receives 500,000 QPS across 200 stateless gateway instances. You must enforce a strict per-user rate limit of 100 requests/minute with a target of less than 2ms added p99 latency. Assume one authoritative Redis primary per key and normal operation; separately discuss failover and partitions.',
     interviewContext: 'Interviewers evaluate your mastery of centralized consistency versus local memory approximation, network round-trip overhead, and memory synchronization.',
     options: [
       {
@@ -259,12 +286,12 @@ export const rateLimiterChallenges: Record<string, ChallengeDefinition> = {
         description: 'Every gateway makes an atomic round-trip EVALSHA call to Redis Cluster before forwarding the request.',
         isOptimal: true,
         simulationResult: {
-          metric: 'p99 Latency: 1.8ms | Accuracy: 100% strict enforcement',
-          outcome: 'Every gateway enforces the exact global quota with zero cross-instance synchronization drift.',
-          impact: 'Negligible latency penalty inside the same AWS Availability Zone; zero risk of quota overrun.',
+          metric: 'Illustrative target: <2ms added p99; benchmark under the stated workload',
+          outcome: 'An atomic script serializes updates for each key on its authoritative primary during normal operation.',
+          impact: 'Adds a network dependency. Failover can lose recent writes; strict enforcement during failures needs an explicit policy.',
         },
-        seniorRationale: 'With pipelined Redis Cluster connections inside the same VPC/AZ, round-trips take ~0.8-1.5ms. The Redis single-threaded execution model executing atomic Lua scripts guarantees zero race conditions without distributed locks.',
-        tradeOffSummary: 'Pros: 100% accurate, atomic, stateless gateways. Cons: Requires Redis Cluster capacity planning for network IOPS.',
+        seniorRationale: 'Atomic Lua scripts avoid read-modify-write races on a primary. Measure end-to-end latency and size for key skew; asynchronous replication and failover do not provide a universal strict-quota guarantee.',
+        tradeOffSummary: 'Pros: Per-key atomic decisions and stateless gateways. Cons: Network latency, hot keys, capacity planning, and failure-policy trade-offs.',
       },
       {
         id: 'opt-local-memory',
@@ -272,7 +299,7 @@ export const rateLimiterChallenges: Record<string, ChallengeDefinition> = {
         description: 'Divide the 100 req/min quota by 200 instances (0.5 req/min per instance). Each gateway checks local memory.',
         isOptimal: false,
         simulationResult: {
-          metric: 'p99 Latency: 0.05ms | Accuracy: Heavy premature throttling (>40% false positives)',
+          metric: 'Illustrative expectation: lower local latency; premature throttling under uneven routing',
           outcome: 'Because user requests are routed via load balancer without sticky sessions, users get throttled prematurely on one node while having ample quota remaining globally.',
           impact: 'Catastrophic user experience degradation for legitimate API customers.',
         },
@@ -298,7 +325,7 @@ export const rateLimiterConceptContext: ConceptContext = {
     exampleData: `Key: "rl:{tenant_id}:{user_id}"\nType: Redis Hash or Sorted Set\nTTL: 60 seconds (auto-expires idle counters)`,
     specificConsiderations: [
       'Use atomic Redis Lua scripts to execute read-modify-write without multi-roundtrip race conditions.',
-      'Always set volatile-ttl with explicit expiration to prevent unbounded memory growth from one-off callers.',
+      'Expire idle counters; choose an eviction policy explicitly, because evicting active counters can reset quotas. Consider noeviction with a defined capacity-error policy.',
       'Deploy Redis in Multi-AZ Cluster mode to avoid single-point-of-failure bottlenecks.',
     ],
   },
@@ -397,9 +424,13 @@ const BACKEND_NODE = createNode({
 });
 
 // 2. Edges (Explicit IDs recommended: 'source-to-target')
+// Edges are directed: an event animates the packet in the edge's from→to direction.
+// Model responses as their own dashed edge pointing back (gw→client), never by
+// reusing the request edge — that would animate the response backwards.
 const edgeClientToGw = createEdge('client', 'gateway', 'HTTPS', { id: 'client-to-gw' });
 const edgeGwToRedis = createEdge('gateway', 'redis', 'EVALSHA Lua', { id: 'gw-to-redis' });
 const edgeGwToBackend = createEdge('gateway', 'backend', 'gRPC', { id: 'gw-to-backend' });
+const edgeGwToClient = createEdge('gateway', 'client', 'HTTP 429', { id: 'gw-to-client', style: 'dashed' });
 
 // 3. Flow Sequences
 const allowedFlow = createFlowSequence('allowed-flow', '1. Allowed Request (Within Quota)', [
@@ -432,14 +463,14 @@ const throttledFlow = createFlowSequence('throttled-flow', '2. Throttled Request
   }),
   createFlowEvent({
     label: '2. Redis Quota Rejection',
-    description: 'Redis Lua script returns 0 tokens remaining and TTL until replenishment.',
+    description: 'Redis Lua script rejects the request; the gateway derives Retry-After from the refill policy.',
     edgeIds: ['gw-to-redis'],
     highlightNodeIds: ['gateway', 'redis'],
   }),
   createFlowEvent({
     label: '3. Return HTTP 429',
     description: 'Gateway immediately rejects request with 429 Too Many Requests and Retry-After header.',
-    edgeIds: ['client-to-gw'],
+    edgeIds: ['gw-to-client'],
     highlightNodeIds: ['gateway', 'client'],
   }),
 ]);
@@ -448,7 +479,7 @@ const throttledFlow = createFlowSequence('throttled-flow', '2. Throttled Request
 export const rateLimiterDiagrams: DiagramDefinition = {
   states: {
     'baseline': createDiagramState('baseline', [CLIENT_NODE, GATEWAY_NODE, BACKEND_NODE], [edgeClientToGw, edgeGwToBackend]),
-    'scaled': createDiagramState('scaled', [CLIENT_NODE, GATEWAY_NODE, REDIS_NODE, BACKEND_NODE], [edgeClientToGw, edgeGwToRedis, edgeGwToBackend], [allowedFlow, throttledFlow]),
+    'scaled': createDiagramState('scaled', [CLIENT_NODE, GATEWAY_NODE, REDIS_NODE, BACKEND_NODE], [edgeClientToGw, edgeGwToRedis, edgeGwToBackend, edgeGwToClient], [allowedFlow, throttledFlow]),
   },
 };
 ```
@@ -464,6 +495,8 @@ import type { StepComponentProps } from '@/types/lesson';
 import { 
   StepContent, 
   StepSection, 
+  Paragraph,
+  ConceptLink,
   Callout, 
   TradeoffTable, 
   DecisionChallenge,
@@ -477,13 +510,18 @@ export const AlgorithmStep: React.FC<StepComponentProps> = ({ onConceptClick }) 
   return (
     <StepContent>
       <StepSection title="Token Bucket vs Sliding Window Log">
-        <p>
+        <Paragraph>
           At scale, choosing the right rate limiting algorithm dictates memory consumption, accuracy, and operational complexity.
-        </p>
+        </Paragraph>
+        <Paragraph>
+          Both families keep their counters in a{' '}
+          <ConceptLink conceptId="cache" onConceptClick={onConceptClick}>cache</ConceptLink>{' '}
+          tier so that gateways stay stateless.
+        </Paragraph>
       </StepSection>
 
       <Callout label="Senior Engineering Insight" variant="insight">
-        Sliding Window Log requires O(N) memory per user where N is request count, creating an unbounded RAM vulnerability during traffic bursts. In contrast, Token Bucket consumes a strictly deterministic 24 bytes per user.
+        Sliding Window Log requires O(N) memory per user where N is request count, creating an unbounded RAM vulnerability during traffic bursts. In contrast, Token Bucket stores O(1) state per user; actual bytes depend on encoding, key size, allocator, and datastore overhead.
       </Callout>
 
       <TradeoffTable
@@ -491,18 +529,19 @@ export const AlgorithmStep: React.FC<StepComponentProps> = ({ onConceptClick }) 
         items={[
           {
             aspect: 'Token Bucket',
-            pros: 'O(1) memory (24 bytes); allows traffic bursts up to bucket capacity; CPU-efficient.',
+            pros: 'O(1) state per user; allows traffic bursts up to bucket capacity; CPU-efficient.',
             cons: 'Two parameters to tune (burst capacity and refill rate).',
           },
           {
             aspect: 'Sliding Window Log',
-            pros: '100% mathematically precise; zero window-boundary reset spikes.',
+            pros: 'Tracks requests in a rolling window; precision depends on timestamp resolution and atomic updates.',
             cons: 'O(N) memory; requires Redis ZREMRANGEBYSCORE on every request.',
           },
         ]}
       />
 
       <StepSection title="Atomic Redis Lua Implementation">
+        <Paragraph>Illustrative single-key algorithm. Validate positive capacity and refill rate, use a consistent clock, and define failover behavior before production use.</Paragraph>
         <CodeBlock
           title="token_bucket.lua"
           language="lua"
@@ -521,7 +560,7 @@ tokens = math.min(capacity, tokens + delta * refill_rate)
 if tokens >= 1 then
   tokens = tokens - 1
   redis.call("HMSET", key, "tokens", tokens, "last_updated", now)
-  redis.call("EXPIRE", key, 60)
+  redis.call("EXPIRE", key, math.max(1, math.ceil(capacity / refill_rate)))
   return 1
 else
   return 0
@@ -538,7 +577,7 @@ end`}
             Implement a client-side circuit breaker. If Redis p99 exceeds 5ms, trip the circuit to a local token bucket with relaxed limits.
           </Card>
           <Card title="What if an attacker spoofs X-Forwarded-For?">
-            Only trust the leftmost IP if validated by upstream Cloudflare/edge proxy; prefer authenticated API keys or mutual TLS tokens.
+            Accept forwarding headers only from trusted proxies that sanitize them; resolve the client using the configured trusted proxy chain. Prefer authenticated tenant or API identities for quotas.
           </Card>
         </CardGrid>
       </StepSection>
@@ -552,38 +591,39 @@ end`}
 ### 7. `src/archetypes/<id>/steps/index.ts`
 ```typescript
 import type { StepComponentMap } from '@/types/lesson';
-import { RequirementsStep } from './RequirementsStep';
-import { ApiDataStep } from './ApiDataStep';
-import { BaselineStep } from './BaselineStep';
 import { AlgorithmStep } from './AlgorithmStep';
-import { CacheStep } from './CacheStep';
-import { ScalingStep } from './ScalingStep';
-import { ReliabilityStep } from './ReliabilityStep';
-import { TradeoffsStep } from './TradeoffsStep';
-import { RecapStep } from './RecapStep';
 
 export const stepComponents: StepComponentMap = {
-  'requirements': RequirementsStep,
-  'api-data': ApiDataStep,
-  'baseline': BaselineStep,
-  'algorithm': AlgorithmStep,
-  'caching': CacheStep,
-  'scaling': ScalingStep,
-  'reliability': ReliabilityStep,
-  'tradeoffs': TradeoffsStep,
-  'recap': RecapStep,
+  algorithm: AlgorithmStep,
 };
 ```
 
 ---
 
-### 8. `src/archetypes/<id>/index.ts`
+### 8. `src/archetypes/<id>/steps-manifest.ts`
+A data-only mirror of `lesson.ts` step ids/titles, so chapter-agnostic surfaces (home page and curriculum list) can enumerate steps **without** importing the lesson, diagrams, or any step component. `validateStepManifest` fails the tests if this drifts from `lesson.ts`.
+
+```typescript
+import type { ChapterStepManifest } from '@/types/lesson';
+
+export const rateLimiterStepManifest: ChapterStepManifest = [
+  { id: 'algorithm', title: 'Rate Limiting Algorithms', shortTitle: 'Algorithms' },
+];
+```
+
+> [!IMPORTANT]
+> The `id`, `title`, and `shortTitle` here MUST exactly match `lesson.ts`, in the same order.
+
+---
+
+### 9. `src/archetypes/<id>/index.ts`
 ```typescript
 import type { ArchetypeModule } from '@/types/archetype';
 import { rateLimiterMetadata } from './metadata';
 import { rateLimiterLesson } from './lesson';
 import { rateLimiterDiagrams } from './diagrams';
 import { rateLimiterConceptContext } from './concept-context';
+import { rateLimiterChallenges } from './challenges';
 import { stepComponents } from './steps';
 
 const rateLimiterModule: ArchetypeModule = {
@@ -592,16 +632,20 @@ const rateLimiterModule: ArchetypeModule = {
   diagrams: rateLimiterDiagrams,
   conceptContext: rateLimiterConceptContext,
   stepComponents,
+  challenges: rateLimiterChallenges,
 };
 
 export default rateLimiterModule;
 ```
 
+> [!NOTE]
+> `challenges` is part of the module contract. Step components still import the challenge map directly to pass a specific challenge to `<DecisionChallenge />`; exposing it on the module lets validators and tooling reach the chapter's challenges without importing step components.
+
 ---
 
 ## Part 4: Wiring & Registration Checklist
 
-Once the 8 files in `src/archetypes/<id>/` are created, wire the archetype into the application in 2 simple steps:
+Once the files in `src/archetypes/<id>/` are created, wire the archetype into the application:
 
 ### Step 1: Update Catalog (`src/archetypes/catalog.ts`)
 Locate the entry in `archetypeCatalog` (or add it if new) and import the metadata:
@@ -615,6 +659,8 @@ export const archetypeCatalog: readonly ArchetypeMetadata[] = [
   // remaining planned entries...
 ];
 ```
+
+`sequence` must stay unique across the catalog, and `availability` must be `'available'` — `validateArchetypeCatalog` rejects an available catalog entry that has no registry loader, and a registry loader whose catalog entry is still `'planned'`.
 
 ### Step 2: Register Lazy Loader (`src/archetypes/registry.ts`)
 Add the dynamic import entry to `archetypeRegistry`:
@@ -635,19 +681,123 @@ export const archetypeRegistry: Record<string, ArchetypeLazyLoader> = {
 > [!CAUTION]
 > Always return `mod.default` because the archetype module is exported with `export default <id>Module;`.
 
+### Step 3: Register the Step Manifest (`src/archetypes/step-manifests.ts`)
+This is what keeps the home page and curriculum list chapter-agnostic — they read manifests instead of hard-coding step IDs:
+
+```typescript
+import { rateLimiterStepManifest } from './rate-limiter/steps-manifest';
+
+export const chapterStepManifests: Readonly<Record<string, ChapterStepManifest>> = {
+  'url-shortener': urlShortenerStepManifest,
+  'rate-limiter': rateLimiterStepManifest,
+};
+```
+
+> [!CAUTION]
+> Only register manifests for **available** chapters. A manifest for a planned chapter makes it look navigable from the home page while its content is still lazy-loaded behind a registry entry that does not exist.
+
+### Step 4: Register New Shared Concepts (`src/concepts/`)
+Only needed if the chapter introduces a concept that other chapters can reuse:
+
+1. Create `src/concepts/<concept-id>.ts` exporting a `SharedConcept` — the chapter-independent explanation, `role`, `tradeoffs`, `failureModes`, and `relatedConceptIds`.
+2. Add it to the registry:
+
+```typescript
+import { rateLimitBucketConcept } from './rate-limit-bucket';
+
+const conceptRegistry: Record<string, SharedConcept> = {
+  cache: cacheConcept,
+  'database-index': databaseIndexConcept,
+  'load-balancer': loadBalancerConcept,
+  idempotency: idempotencyConcept,
+  'rate-limit-bucket': rateLimitBucketConcept,
+};
+```
+
+3. Keep the **chapter-specific** part in `src/archetypes/<id>/concept-context.ts`, keyed by the same concept ID.
+
+Concept IDs are stable identifiers: they are referenced from `lesson.ts` steps, `diagrams.ts` nodes, and `concept-context.ts`, and they appear in concept URLs. `validateArchetypeModule` reports `step/concept-unregistered`, `diagram/node-concept-unregistered`, and `concept-context/unregistered` when an ID is missing from the registry.
+
+### Step 5: Automatic Validation
+The shipped-archetypes suite automatically loads every registered chapter and validates its manifest and cross-references. No chapter-specific test registration is required. Production prerendering runs the same validators and fails on invalid content before emitting routes.
+
+### Step 6: Static Rendering
+`scripts/prerender.ts` generates SEO HTML for every **available** catalog entry, its steps (from the validated lesson definition), and the shared concept pages. A newly registered chapter is picked up automatically — verify its routes appear in `dist/sitemap.xml` after `npm run build`.
+
 ---
 
-## Part 5: Quality Checklist & Anti-Hallucination Rules
+## Part 5: Quality Checklist & Validation
 
-Before finishing the implementation, coding agents must verify against these rules:
+### Automated validation
+`src/archetypes/validate.ts` is the authority on these rules — do not eyeball IDs. It collects *all* problems instead of failing on the first, so one run reports everything:
+
+```typescript
+import { validateArchetypeModule, formatArchetypeIssues } from '@/archetypes/validate';
+
+const result = validateArchetypeModule(module, {
+  knownConceptIds: getAllConcepts().map((concept) => concept.id),
+  stepManifest: rateLimiterStepManifest,
+});
+if (!result.valid) throw new Error(formatArchetypeIssues('rate-limiter', result.issues));
+```
+
+It checks, among others: metadata field types and enum values; `lesson.archetypeId === metadata.id`; duplicate step IDs; every `diagramStateId`, `flowSequenceId`, `highlightedNodes` entry, and `conceptId` resolving to something that exists; diagram node/edge ID uniqueness and edge endpoints; flow events referencing real edges and nodes; `concept-context` keys matching registered concepts and the concepts used by steps; challenge keys matching IDs, unique option IDs, and exactly one `isOptimal` option; `stepComponents` covering every step with no unreachable keys; and step-manifest ↔ lesson agreement (IDs, order, titles).
+
+`validateArchetypeCatalog` additionally checks catalog ID/sequence uniqueness and that available ↔ registered ↔ manifest entries line up.
+
+### Acceptance commands
+```bash
+npm run typecheck   # 0 errors (strict, noUnusedLocals, noUnusedParameters, noUncheckedIndexedAccess)
+npm run lint        # 0 warnings (--max-warnings 0)
+npm test            # all unit tests, including the validate suite
+npm run build       # validates chapters and writes dist/ and sitemap.xml
+npm run test:build  # checks generated HTML; run after build
+npm run test:e2e    # browser regression coverage
+```
+
+### Rules the compiler cannot catch
 
 | # | Check | Rule |
 |---|---|---|
 | 1 | **Export Default** | `src/archetypes/<id>/index.ts` MUST export default `ArchetypeModule`. Do NOT export `chapterImplementation`. |
 | 2 | **Registry Loader** | `src/archetypes/registry.ts` MUST use `const mod = await import('./<id>/index'); return mod.default;`. |
 | 3 | **Metadata Types** | `metadata.ts` MUST use `stage: 'foundation' \| 'advanced' \| 'genai'` and `availability: 'available'`. Never use `status` or `difficulty`. |
-| 4 | **Edge IDs in Flows** | The `edgeIds` in `FlowEvent` MUST match the `id` of the edges passed to `createDiagramState`. Recommend using explicit IDs like `{ id: 'client-to-gateway' }`. |
-| 5 | **Diagram State IDs** | Every `diagramStateId` in `lesson.ts` (e.g. `'baseline'`, `'scaled'`) MUST exist as a key in `diagrams.states` (except `'empty'` for text-only steps). |
-| 6 | **Step IDs** | The keys in `steps/index.ts` (`stepComponents`) MUST match the step `id` strings defined in `lesson.ts`. |
-| 7 | **Challenges** | `challenges.ts` is NOT part of `ArchetypeModule` in `index.ts`. Challenges are imported and passed directly to `<DecisionChallenge challenge={...} />` inside step components. |
-| 8 | **Build Verification** | Always run `npm run typecheck && npm test && npm run build` to verify TypeScript, unit tests, and production static prerendering. |
+| 4 | **Edge IDs in Flows** | The `edgeIds` in `FlowEvent` MUST match the `id` of the edges passed to `createDiagramState`. Recommend explicit IDs like `{ id: 'client-to-gateway' }`. |
+| 5 | **Diagram State IDs** | Every `diagramStateId` in `lesson.ts` MUST exist as a key in `diagrams.states` (omit the field for text-only steps; `empty` is not a reserved state). |
+| 6 | **Step IDs** | The keys in `steps/index.ts`, the entries in `steps-manifest.ts`, and the step `id`s in `lesson.ts` MUST cover the same IDs; manifest order MUST match lesson order. |
+| 7 | **Challenges** | `challenges.ts` IS part of `ArchetypeModule` (`challenges:` in `index.ts`). Step components also import the map directly to pass one challenge to `<DecisionChallenge />`. |
+| 8 | **Shared Primitives** | Compose steps from `@/components/lesson/StepComponents` (`StepContent`, `StepSection`, `Paragraph`, `List`, `InlineCode`, `ConceptLink`, `Callout`, `CardGrid`, `Card`, `CodeBlock`, `TradeoffTable`, `DecisionChallenge`). Do NOT copy another chapter's CSS or components; put chapter-specific widgets in `<id>/components/`. |
+| 9 | **Manifest Registration** | Available chapters MUST have an entry in `src/archetypes/step-manifests.ts`; planned chapters MUST NOT. |
+| 10 | **Honest Numbers** | Label illustrative/simulated results as illustrative. Never present hard-coded latency or cost as measured. |
+
+### Stable IDs and saved progress
+These IDs are persisted in `localStorage` and must never change once a chapter ships — renaming one silently orphans reader progress:
+
+| ID | Persisted in | Renaming breaks |
+|---|---|---|
+| `metadata.id` / archetype ID | `archetypes[id]`, `lastVisited`, challenge namespace, route URLs | all chapter progress, bookmarks, SEO URLs |
+| `LessonStep.id` | `archetypes[id].steps[stepId]` | that step's visited/completed state |
+| `ChallengeDefinition.id` | `challenges[archetypeId][challengeId]` | that challenge's attempt/completion/understanding state |
+
+Concept IDs and diagram node IDs are not persisted directly, but they are cross-referenced by the files above; changing them requires updating every reference (the validator will report the breakage).
+
+### Challenge identity and persistence
+Challenge IDs are **scoped to a chapter**, not global. Two chapters may both define `storage-strategy` and their saved attempts stay independent, because progress is stored as `challenges[archetypeId][challengeId]`.
+
+- The archetype ID reaches the challenge through `LessonProvider` in `src/components/lesson/LessonContext.tsx`, which `LessonPage` wraps around the lesson. `<DecisionChallenge challenge={…} />` takes no chapter prop — do not add one.
+- A challenge rendered **outside** a lesson has no archetype ID, so it is not persisted and reads no saved state. This is intentional: there is no chapter to attribute the attempt to.
+- `<DecisionChallenge />` keys its inner state on `archetypeId:challengeId`, so swapping the rendered challenge in the same slot discards the previous selection and evaluation instead of carrying it over.
+- Legacy saves (schema v1/v2) stored challenges flat; `migrateProgress` attributes them to `url-shortener`, the only chapter that shipped challenges before v3. See `docs/progress-format.md`.
+
+### Field contract: required vs optional
+`LessonStep` — required: `id`, `title`, `objective`. Optional: `shortTitle`, `diagramStateId`, `highlightedNodes`, `flowSequenceId`, `concepts`.
+`ArchetypeMetadata` — required: `id`, `title`, `description`, `stage`, `sequence`, `availability`, `tags`. Optional: `estimatedMinutes`.
+`DiagramNode` — required: `id`, `label`, `role`, `x`, `y`. Optional: `conceptId`, `description`, `spec`.
+`ArchetypeModule` — required: `metadata`, `lesson`, `diagrams`, `conceptContext`, `stepComponents`. Optional: `challenges`.
+
+Everything in the Part 3 templates is an **example**; the IDs shown (`rate-limiter`, `storage-strategy`, `allowed-flow`, `redis`) are illustrative placeholders, not values to copy verbatim.
+
+### Executable authoring starter
+`src/archetypes/__tests__/fixtures/rate-limiter/` is a minimal, test-only second chapter. Copy its structure when starting a chapter; replace the sample content and register your chapter in the catalog, registry, and manifest index. It is not published as a completed lesson.
+
+All nine chapter file templates above are exact copies of the compiled fixture files. `authoring.test.tsx` checks them for drift; strict typechecking compiles them. Integration coverage exercises the shared lesson shell, home navigation, concept associations, progress isolation, and static route generation. Update the fixture and document examples together.

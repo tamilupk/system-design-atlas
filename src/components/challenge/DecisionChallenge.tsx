@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { ChallengeDefinition } from '@/types/challenge';
 import { useProgress } from '@/hooks/useProgress';
+import { useLessonContext } from '@/components/lesson/LessonContext';
+import { getChallengeProgress } from '@/features/progress/selectors';
 import { CheckCircle2, AlertTriangle, ArrowRight, RotateCcw } from 'lucide-react';
 import styles from './DecisionChallenge.module.css';
 
@@ -8,11 +10,36 @@ interface DecisionChallengeProps {
   challenge: ChallengeDefinition;
 }
 
+/**
+ * Wraps the challenge UI so that local selection state is discarded whenever
+ * the rendered challenge identity changes. Without the key, swapping one
+ * challenge for another in the same slot would keep the previous challenge's
+ * selected option and evaluation panel.
+ */
 export const DecisionChallenge: React.FC<DecisionChallengeProps> = ({ challenge }) => {
+  const lesson = useLessonContext();
+  const archetypeId = lesson?.archetypeId ?? null;
+
+  return (
+    <DecisionChallengeView
+      key={`${archetypeId ?? 'no-chapter'}:${challenge.id}`}
+      challenge={challenge}
+      archetypeId={archetypeId}
+    />
+  );
+};
+
+interface DecisionChallengeViewProps {
+  challenge: ChallengeDefinition;
+  /** Chapter that owns this challenge; `null` outside a lesson, where progress is not persisted. */
+  archetypeId: string | null;
+}
+
+const DecisionChallengeView: React.FC<DecisionChallengeViewProps> = ({ challenge, archetypeId }) => {
   const { state, saveChallengeAttempt } = useProgress();
-  
-  const savedProgress = state.challenges?.[challenge.id];
-  
+
+  const savedProgress = archetypeId ? getChallengeProgress(state, archetypeId, challenge.id) : null;
+
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     savedProgress?.selectedOptionId || null
   );
@@ -25,11 +52,14 @@ export const DecisionChallenge: React.FC<DecisionChallengeProps> = ({ challenge 
   const handleSimulate = () => {
     if (!selectedOption) return;
     setEvaluated(true);
-    saveChallengeAttempt(
-      challenge.id,
-      selectedOption.id,
-      selectedOption.isOptimal
-    );
+    if (archetypeId) {
+      saveChallengeAttempt(
+        archetypeId,
+        challenge.id,
+        selectedOption.id,
+        selectedOption.isOptimal
+      );
+    }
   };
 
   const handleRetry = () => {

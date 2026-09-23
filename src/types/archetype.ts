@@ -1,6 +1,7 @@
 import type { LessonDefinition, StepComponentMap } from './lesson';
 import type { ConceptContext } from './concept';
 import type { DiagramDefinition } from './diagram';
+import type { ChallengeMap } from './challenge';
 
 export type LearningStage =
   | 'foundation'
@@ -26,6 +27,12 @@ export interface ArchetypeModule {
   readonly diagrams: DiagramDefinition;
   readonly conceptContext: ConceptContext;
   readonly stepComponents: StepComponentMap;
+  /**
+   * Decision challenges authored for this chapter. Optional: a chapter may ship
+   * without challenges. When present, `validateArchetypeModule` checks that every
+   * entry is well-formed and that its key matches `ChallengeDefinition.id`.
+   */
+  readonly challenges?: ChallengeMap;
 }
 
 export type ArchetypeLazyLoader = () => Promise<ArchetypeModule>;

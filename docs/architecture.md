@@ -14,15 +14,15 @@ System Design Atlas is a purely client-side React application. It uses React 19,
 | Language | TypeScript 5.8 — `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`, target ES2022 |
 | Routing | `react-router-dom` 7.6 (`createBrowserRouter`) |
 | Build | Vite 6.3 + `@vitejs/plugin-react`; path alias `@/*` → `src/*` |
-| Unit tests | Vitest 3.2 + Testing Library + jsdom |
+| Unit tests | Vitest 4.1 + Testing Library + jsdom |
 | E2E tests | Playwright 1.63 (Chromium) |
-| Lint | ESLint 9 flat config, run with `--max-warnings 0` |
+| Lint | ESLint 9 + typescript-eslint recommended rules, run with `--max-warnings 0` |
 | Serialization | `yaml` 2.7 for progress export/import |
 
-`tsconfig.json` includes only `src` and `tests`; scripts run through `tsconfig.node.json`.
+`tsconfig.json` checks app code, tests, build scripts, and tooling configuration in one no-emit project.
 
 CI (`.github/workflows/ci.yml`, Node 22) runs on every push and PR to `main` in this order:
-`npm ci` → `typecheck` → `lint` → `test` → `build` (includes prerender) → `playwright install --with-deps chromium` → `test:e2e`.
+`npm ci` → `typecheck` → `lint` → `test` → `build` (includes prerender) → `test:build` → `playwright install --with-deps chromium` → `test:e2e`.
 
 ## Folder Structure & Ownership
 
@@ -106,15 +106,15 @@ Progress is saved in `localStorage` under the versioned key `system-design-atlas
 
 ## Build-Time Prerendering & SEO
 
-`npm run build` is `tsc -b && vite build && vite-node scripts/prerender.ts`. The prerender step post-processes `dist/` so every public route has real, crawlable HTML:
+`npm run build` is `tsc -b && vite build && vite-node scripts/prerender-cli.ts`. The prerender step post-processes `dist/` so every public route has real, crawlable HTML:
 
-- Emits one `index.html` per route (currently 16: home, the `url-shortener` overview, its 9 steps, and the 4 concept pages) into path-shaped directories.
+- Emits one `index.html` per route (currently 15: home, the `url-shortener` overview, its 9 steps, and the 4 concept pages) into path-shaped directories.
 - Injects per-route `<title>`, meta description, canonical URL, Open Graph tags, and `TechArticle` + `BreadcrumbList` JSON-LD.
 - Injects a static `fallbackHtml` payload inside `#root` so the page has readable content before hydration.
 - Generates `sitemap.xml` (with `changefreq`/`priority` per route) and `robots.txt`.
 - Copies the shell to `404.html` as the SPA fallback for static hosts.
 
-Routes are derived from `archetypeCatalog`, the lesson definition, and the concept registry, so new content is picked up automatically — but the script currently hardcodes the `url-shortener` chapter and concept set, which must be generalized when a second chapter ships.
+Routes are derived from `archetypeCatalog`, the registry, the lesson definitions, and the concept registry, so new content is picked up automatically. The generator is chapter-agnostic: it iterates every `available` catalog entry, loads it through the registry, and emits its overview, step, and concept pages — adding a chapter to the catalog and registry is enough, the script never needs editing.
 
 ## Diagram System
 
@@ -168,3 +168,5 @@ The application features AI Chat Assistance (`src/features/chat-assist/`).
 - Custom components have `aria-*` attributes (e.g., `aria-expanded`, `aria-label`).
 - Focus management is required for modals and navigation flows.
 - Visual cues must not rely solely on color.
+
+Content validation runs before prerendering emits routes. Browser concept pages and prerendering share `buildConceptIndex`; concept pages lazy-load registered available chapters to build their case-study list. Unit tests need no build output; `npm run test:build` checks artifacts after building.

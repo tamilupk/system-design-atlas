@@ -35,6 +35,7 @@ export function useProgress() {
   }, [dispatch]);
 
   const saveChallengeAttempt = useCallback((
+    archetypeId: string,
     challengeId: string,
     selectedOptionId: string,
     demonstratedUnderstanding: boolean,
@@ -42,6 +43,7 @@ export function useProgress() {
   ) => {
     dispatch({
       type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId,
       challengeId,
       selectedOptionId,
       demonstratedUnderstanding,

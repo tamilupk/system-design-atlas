@@ -46,11 +46,11 @@ features → types (never components or archetypes)
 
 ## Adding a New Chapter
 
-1. Create `src/archetypes/<chapter-id>/` with: `metadata.ts`, `lesson.ts`, `diagrams.ts`, `challenges.ts`, `concept-context.ts`, `steps/`, and `index.ts`.
+1. Create `src/archetypes/<chapter-id>/` with: `metadata.ts`, `lesson.ts`, `diagrams.ts`, `challenges.ts`, `concept-context.ts`, `steps-manifest.ts`, `steps/`, and `index.ts`.
 2. Add metadata to `src/archetypes/catalog.ts` (change availability from 'planned' to 'available').
 3. Add the lazy loader to `src/archetypes/registry.ts`.
-4. Create step components in the `steps/` folder.
-5. Reuse existing `LessonPlayer`, `ArchitectureDiagram`, and progress infrastructure.
+4. Register the data-only manifest in `src/archetypes/step-manifests.ts`. Create step components in the `steps/` folder.
+5. Reuse existing `LessonPage` shell, `ArchitectureDiagram`, and progress infrastructure.
 6. Update `docs/authoring-archetypes.md` if the process changes.
 
 ## After Making Changes
@@ -58,6 +58,7 @@ features → types (never components or archetypes)
 - Run `npm run typecheck` to verify TypeScript.
 - Run `npm run lint` to verify ESLint (zero warnings allowed).
 - Run `npm run build` to verify the production build and static prerender.
+- Run `npm run test:build` after building to check generated HTML.
 - Run `npm test` to run unit tests.
 - Run `npm run test:e2e` for Playwright coverage of the lesson shell and diagrams.
 - Update documentation if architecture or contracts changed.

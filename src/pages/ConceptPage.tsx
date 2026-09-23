@@ -1,6 +1,9 @@
 import { useParams, Link } from 'react-router-dom';
 import { getConcept } from '@/concepts/registry';
-import { urlShortenerConceptContext } from '@/archetypes/url-shortener/concept-context';
+import { useEffect, useState } from 'react';
+import { archetypeCatalog } from '@/archetypes/catalog';
+import { archetypeRegistry } from '@/archetypes/registry';
+import { buildConceptIndex } from '@/archetypes/concept-index';
 import { TradeoffTable } from '@/components/lesson/TradeoffTable';
 import { AskAIButton } from '@/components/chat/AskAIButton';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
@@ -9,6 +12,20 @@ import styles from './ConceptPage.module.css';
 export function ConceptPage() {
   const { conceptId } = useParams<{ conceptId: string }>();
   const concept = conceptId ? getConcept(conceptId) : undefined;
+
+  const [contexts, setContexts] = useState<ReturnType<typeof buildConceptIndex>>(new Map());
+  const [contextError, setContextError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    Promise.all(archetypeCatalog.filter(entry => entry.availability === 'available').map(async entry => {
+      const loader = archetypeRegistry[entry.id];
+      if (!loader) throw new Error(`Missing chapter: ${entry.id}`);
+      return loader();
+    })).then(chapters => {
+      if (active) setContexts(buildConceptIndex(chapters));
+    }).catch(() => { if (active) setContextError(true); });
+    return () => { active = false; };
+  }, []);
 
   if (!concept) {
     return (
@@ -26,7 +43,7 @@ export function ConceptPage() {
     );
   }
 
-  const urlShortenerContext = urlShortenerConceptContext[concept.id];
+  const appliedIn = contexts.get(concept.id) ?? [];
 
   return (
     <div className={styles.page}>
@@ -85,22 +102,23 @@ export function ConceptPage() {
           </section>
         )}
 
-        {urlShortenerContext && (
+        {contextError && <p role="status">Case studies could not be loaded. Reload to try again.</p>}
+        {appliedIn.length > 0 && (
           <section className={styles.card} aria-labelledby="archetypes-heading">
             <h2 id="archetypes-heading" className={styles.sectionTitle}>Applied in System Archetypes</h2>
-            <div className={styles.archetypeCard}>
-              <Link to="/archetypes/url-shortener" className={styles.archetypeTitle}>
-                URL Shortener Case Study <ExternalLink size={14} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: 4 }} />
+            {appliedIn.map(({ metadata, entry }) => (<div key={metadata.id} className={styles.archetypeCard}>
+              <Link to={`/archetypes/${metadata.id}`} className={styles.archetypeTitle}>
+                {metadata.title} Case Study <ExternalLink size={14} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: 4 }} />
               </Link>
-              <p className={styles.archetypeRole}>{urlShortenerContext.chapterRole}</p>
-              {urlShortenerContext.specificConsiderations.length > 0 && (
+              <p className={styles.archetypeRole}>{entry.chapterRole}</p>
+              {entry.specificConsiderations.length > 0 && (
                 <ul className={styles.list} style={{ marginTop: 8 }}>
-                  {urlShortenerContext.specificConsiderations.map((consideration, idx) => (
+                  {entry.specificConsiderations.map((consideration, idx) => (
                     <li key={idx}>{consideration}</li>
                   ))}
                 </ul>
               )}
-            </div>
+            </div>))}
           </section>
         )}
 

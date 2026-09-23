@@ -1,20 +1,25 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
-import { CodeBlock } from '@/components/lesson/CodeBlock';
-import styles from './StepContent.module.css';
+import {
+  CodeBlock,
+  ConceptLink,
+  InlineCode,
+  Paragraph,
+  StepContent,
+  StepSection,
+} from '@/components/lesson/StepComponents';
 
 export const ApiDataStep: FC<StepComponentProps> = ({ onConceptClick }) => {
   return (
-    <div className={styles.content}>
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>API Endpoints</h3>
-        <p className={styles.paragraph}>
+    <StepContent>
+      <StepSection title="API Endpoints">
+        <Paragraph>
           Our system needs two primary API endpoints: one for creating the short link, and one for redirecting the user when they click it.
-        </p>
-        
-        <p className={styles.paragraph}>
+        </Paragraph>
+
+        <Paragraph>
           <strong>1. Create Short URL:</strong> The client sends the long URL and optional parameters (custom alias, expiration).
-        </p>
+        </Paragraph>
         <CodeBlock
           language="json"
           code={`// POST /api/urls
@@ -39,9 +44,9 @@ export const ApiDataStep: FC<StepComponentProps> = ({ onConceptClick }) => {
 }`}
         />
 
-        <p className={styles.paragraph}>
+        <Paragraph>
           <strong>2. Redirect Endpoint:</strong> When a user navigates to the short URL, the server returns an HTTP redirect response with explicit caching directives.
-        </p>
+        </Paragraph>
         <CodeBlock
           language="http"
           code={`// GET /:short_code (e.g., GET /my-link)
@@ -50,13 +55,12 @@ HTTP/1.1 302 Found
 Location: https://www.example.com/some/very/long/path/that/needs/shortening
 Cache-Control: private, max-age=90`}
         />
-      </div>
+      </StepSection>
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Database Schema</h3>
-        <p className={styles.paragraph}>
-          For our relational database, we need a single table to store the mappings. We'll call this table <code className={styles.inlineCode}>urls</code>.
-        </p>
+      <StepSection title="Database Schema">
+        <Paragraph>
+          For our relational database, we need a single table to store the mappings. We'll call this table <InlineCode>urls</InlineCode>.
+        </Paragraph>
         <CodeBlock
           language="sql"
           code={`CREATE TABLE urls (
@@ -68,18 +72,15 @@ Cache-Control: private, max-age=90`}
   click_count BIGINT DEFAULT 0
 );`}
         />
-        <p className={styles.paragraph}>
-          Notice the <code className={styles.inlineCode}>UNIQUE</code> constraint on <code className={styles.inlineCode}>short_code</code>. 
+        <Paragraph>
+          Notice the <InlineCode>UNIQUE</InlineCode> constraint on <InlineCode>short_code</InlineCode>.
           This constraint automatically creates a{' '}
-          <button 
-            className={styles.conceptLink} 
-            onClick={() => onConceptClick('database-index')}
-          >
+          <ConceptLink conceptId="database-index" onConceptClick={onConceptClick}>
             database index
-          </button>, 
+          </ConceptLink>,
           which ensures that lookups by short code are fast (O(log n) time complexity) rather than requiring a full table scan.
-        </p>
-      </div>
-    </div>
+        </Paragraph>
+      </StepSection>
+    </StepContent>
   );
 };

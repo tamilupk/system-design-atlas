@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { progressReducer, initialState } from '@/features/progress/reducer';
-import { getChapterProgress, isStepCompleted, isStepVisited, getOverallProgress, getResumeInfo } from '@/features/progress/selectors';
+import { getChapterProgress, isStepCompleted, isStepVisited, getOverallProgress, getResumeInfo, getChallengeProgress } from '@/features/progress/selectors';
 import { validateProgressState } from '@/features/progress/validation';
+import { migrateProgress } from '@/features/progress/migrations';
+import { CURRENT_SCHEMA_VERSION } from '@/features/progress/types';
 import type { ProgressState } from '@/features/progress/types';
 
 const STEP_IDS = ['requirements', 'api-data', 'baseline', 'id-generation', 'cache', 'scaling', 'reliability', 'tradeoffs', 'recap'];
@@ -9,7 +11,7 @@ const STEP_IDS = ['requirements', 'api-data', 'baseline', 'id-generation', 'cach
 describe('progressReducer', () => {
   it('should return initial state', () => {
     expect(initialState.app).toBe('system-design-atlas');
-    expect(initialState.schemaVersion).toBe(2);
+    expect(initialState.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(initialState.lastVisited).toBeNull();
     expect(initialState.preferences.chatProvider).toBe('chatgpt');
     expect(Object.keys(initialState.archetypes)).toHaveLength(0);
@@ -106,6 +108,7 @@ describe('progressReducer', () => {
   it('should handle SAVE_CHALLENGE_ATTEMPT and track demonstrated understanding', () => {
     let state = progressReducer(initialState, {
       type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'url-shortener',
       challengeId: 'viral-link',
       selectedOptionId: 'opt-b',
       demonstratedUnderstanding: false,
@@ -113,7 +116,7 @@ describe('progressReducer', () => {
       timestamp: '2026-01-01T00:00:00Z',
     });
 
-    expect(state.challenges?.['viral-link']).toEqual({
+    expect(state.challenges?.['url-shortener']?.['viral-link']).toEqual({
       challengeId: 'viral-link',
       attemptedAt: '2026-01-01T00:00:00Z',
       completedAt: null,
@@ -125,15 +128,92 @@ describe('progressReducer', () => {
     // Successfully demonstrates understanding
     state = progressReducer(state, {
       type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'url-shortener',
       challengeId: 'viral-link',
       selectedOptionId: 'opt-c',
       demonstratedUnderstanding: true,
       timestamp: '2026-01-01T00:05:00Z',
     });
 
-    expect(state.challenges?.['viral-link']?.demonstratedUnderstanding).toBe(true);
-    expect(state.challenges?.['viral-link']?.completedAt).toBe('2026-01-01T00:05:00Z');
-    expect(state.challenges?.['viral-link']?.notesDraft).toBe('Drafting notes on hotkey mitigation');
+    expect(state.challenges?.['url-shortener']?.['viral-link']?.demonstratedUnderstanding).toBe(true);
+    expect(state.challenges?.['url-shortener']?.['viral-link']?.completedAt).toBe('2026-01-01T00:05:00Z');
+    expect(state.challenges?.['url-shortener']?.['viral-link']?.notesDraft).toBe('Drafting notes on hotkey mitigation');
+  });
+
+  it('should keep challenge progress independent per archetype for colliding challenge IDs', () => {
+    let state = progressReducer(initialState, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'url-shortener',
+      challengeId: 'storage-strategy',
+      selectedOptionId: 'opt-a',
+      demonstratedUnderstanding: true,
+      timestamp: '2026-01-01T00:00:00Z',
+    });
+
+    state = progressReducer(state, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'rate-limiter',
+      challengeId: 'storage-strategy',
+      selectedOptionId: 'opt-b',
+      demonstratedUnderstanding: false,
+      timestamp: '2026-02-01T00:00:00Z',
+    });
+
+    expect(getChallengeProgress(state, 'url-shortener', 'storage-strategy')).toEqual({
+      challengeId: 'storage-strategy',
+      attemptedAt: '2026-01-01T00:00:00Z',
+      completedAt: '2026-01-01T00:00:00Z',
+      selectedOptionId: 'opt-a',
+      demonstratedUnderstanding: true,
+      notesDraft: undefined,
+    });
+    expect(getChallengeProgress(state, 'rate-limiter', 'storage-strategy')?.selectedOptionId).toBe('opt-b');
+    expect(getChallengeProgress(state, 'rate-limiter', 'storage-strategy')?.demonstratedUnderstanding).toBe(false);
+    expect(getChallengeProgress(state, 'rate-limiter', 'storage-strategy')?.completedAt).toBeNull();
+    expect(getChallengeProgress(state, 'unknown-chapter', 'storage-strategy')).toBeNull();
+  });
+
+  it('should merge namespaced challenge progress without cross-chapter leakage', () => {
+    const current = progressReducer(initialState, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'url-shortener',
+      challengeId: 'storage-strategy',
+      selectedOptionId: 'opt-a',
+      demonstratedUnderstanding: true,
+      timestamp: '2026-03-01T00:00:00Z',
+    });
+
+    const imported: ProgressState = {
+      ...initialState,
+      challenges: {
+        'url-shortener': {
+          'storage-strategy': {
+            challengeId: 'storage-strategy',
+            attemptedAt: '2026-01-01T00:00:00Z',
+            completedAt: null,
+            selectedOptionId: 'opt-b',
+            demonstratedUnderstanding: false,
+          },
+        },
+        'rate-limiter': {
+          'storage-strategy': {
+            challengeId: 'storage-strategy',
+            attemptedAt: '2026-02-01T00:00:00Z',
+            completedAt: '2026-02-01T00:00:00Z',
+            selectedOptionId: 'opt-c',
+            demonstratedUnderstanding: true,
+          },
+        },
+      },
+    };
+
+    const merged = progressReducer(current, { type: 'MERGE_STATE', imported });
+
+    // Earliest attempt wins, understanding stays sticky, the other chapter is untouched.
+    expect(merged.challenges?.['url-shortener']?.['storage-strategy']?.attemptedAt).toBe('2026-01-01T00:00:00Z');
+    expect(merged.challenges?.['url-shortener']?.['storage-strategy']?.demonstratedUnderstanding).toBe(true);
+    expect(merged.challenges?.['url-shortener']?.['storage-strategy']?.completedAt).toBe('2026-03-01T00:00:00Z');
+    expect(merged.challenges?.['rate-limiter']?.['storage-strategy']?.selectedOptionId).toBe('opt-c');
   });
 
   it('should handle SAVE_DECISION_ENTRY in decision journal', () => {
@@ -331,7 +411,7 @@ describe('selectors', () => {
   });
 
   it('getChapterProgress handles newly added steps correctly', () => {
-    let state = progressReducer(initialState, {
+    const state = progressReducer(initialState, {
       type: 'COMPLETE_STEP',
       archetypeId: 'url-shortener',
       stepId: 'requirements',
@@ -369,7 +449,7 @@ describe('selectors', () => {
   });
 
   it('getOverallProgress', () => {
-    let state = progressReducer(initialState, {
+    const state = progressReducer(initialState, {
       type: 'VISIT_STEP',
       archetypeId: 'url-shortener',
       stepId: 'requirements',
@@ -384,7 +464,7 @@ describe('selectors', () => {
   });
 
   it('getResumeInfo returns last visited', () => {
-    let state = progressReducer(initialState, {
+    const state = progressReducer(initialState, {
       type: 'VISIT_STEP',
       archetypeId: 'url-shortener',
       stepId: 'cache',
@@ -412,17 +492,85 @@ describe('validation', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('should accept and migrate schemaVersion 1 to schemaVersion 2', () => {
+  it('should accept and migrate schemaVersion 1 to the current schema version', () => {
     const v1State = { ...initialState, schemaVersion: 1 };
-    delete (v1State as any).challenges;
-    delete (v1State as any).decisionJournal;
+    delete v1State.challenges;
+    delete v1State.decisionJournal;
     const result = validateProgressState(v1State);
     expect(result.valid).toBe(true);
     if (result.valid) {
-      expect(result.state.schemaVersion).toBe(2);
+      expect(result.state.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(result.state.challenges).toEqual({});
       expect(result.state.decisionJournal).toEqual([]);
     }
+  });
+
+  it('should migrate flat v2 challenge progress into the url-shortener namespace', () => {
+    const v2State = {
+      ...initialState,
+      schemaVersion: 2,
+      challenges: {
+        'viral-link': {
+          challengeId: 'viral-link',
+          attemptedAt: '2026-01-01T00:00:00Z',
+          completedAt: '2026-01-02T00:00:00Z',
+          selectedOptionId: 'opt-c',
+          demonstratedUnderstanding: true,
+          notesDraft: 'Kept draft',
+        },
+      },
+    };
+
+    const migrated = migrateProgress(v2State);
+    expect(migrated).not.toBeNull();
+    expect(migrated?.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated?.challenges).toEqual({
+      'url-shortener': {
+        'viral-link': {
+          challengeId: 'viral-link',
+          attemptedAt: '2026-01-01T00:00:00Z',
+          completedAt: '2026-01-02T00:00:00Z',
+          selectedOptionId: 'opt-c',
+          demonstratedUnderstanding: true,
+          notesDraft: 'Kept draft',
+        },
+      },
+    });
+  });
+
+  it('should leave already-namespaced v3 challenge progress untouched', () => {
+    const v3State = {
+      ...initialState,
+      challenges: {
+        'rate-limiter': {
+          'storage-strategy': {
+            challengeId: 'storage-strategy',
+            attemptedAt: '2026-01-01T00:00:00Z',
+            completedAt: null,
+            selectedOptionId: 'opt-a',
+            demonstratedUnderstanding: false,
+          },
+        },
+      },
+    };
+
+    const migrated = migrateProgress(v3State);
+    expect(migrated?.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated?.challenges?.['rate-limiter']?.['storage-strategy']?.selectedOptionId).toBe('opt-a');
+    expect(migrated?.challenges?.['url-shortener']).toBeUndefined();
+  });
+
+  it('should reject malformed namespaced challenge progress', () => {
+    const bad = {
+      ...initialState,
+      challenges: { 'url-shortener': { 'viral-link': { challengeId: 'viral-link' } } },
+    };
+    expect(validateProgressState(bad).valid).toBe(false);
+  });
+
+  it('should reject prototype pollution in challenges', () => {
+    const malicious = JSON.parse('{"app":"system-design-atlas","schemaVersion":3,"preferences":{"chatProvider":"chatgpt","focusMode":false},"lastVisited":null,"archetypes":{},"challenges":{"__proto__":{"x":{"challengeId":"x","attemptedAt":"2026-01-01T00:00:00Z","completedAt":null,"selectedOptionId":null,"demonstratedUnderstanding":false}}}}');
+    expect(validateProgressState(malicious).valid).toBe(false);
   });
 
   it('should reject unsupported schema version', () => {
@@ -529,6 +677,71 @@ describe('YAML round-trip', () => {
       expect(result.state.notes?.steps['url-shortener']?.['cache']).toContain('probabilistic early expiration');
     }
   });
+
+  it('should round-trip challenge progress namespaced per chapter', async () => {
+    const { exportToYaml, importFromYaml } = await import('@/features/progress/yaml-transfer');
+
+    // Two chapters deliberately reuse the same challenge ID.
+    let state = progressReducer(initialState, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'url-shortener',
+      challengeId: 'storage-strategy',
+      selectedOptionId: 'opt-a',
+      demonstratedUnderstanding: true,
+      timestamp: '2026-01-01T00:00:00Z',
+    });
+    state = progressReducer(state, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      archetypeId: 'rate-limiter',
+      challengeId: 'storage-strategy',
+      selectedOptionId: 'opt-b',
+      demonstratedUnderstanding: false,
+      timestamp: '2026-02-01T00:00:00Z',
+    });
+
+    const yaml = await exportToYaml(state);
+    expect(yaml).toContain('url-shortener');
+    expect(yaml).toContain('rate-limiter');
+
+    const result = await importFromYaml(yaml);
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(getChallengeProgress(result.state, 'url-shortener', 'storage-strategy')?.selectedOptionId).toBe('opt-a');
+      expect(getChallengeProgress(result.state, 'url-shortener', 'storage-strategy')?.demonstratedUnderstanding).toBe(true);
+      expect(getChallengeProgress(result.state, 'rate-limiter', 'storage-strategy')?.selectedOptionId).toBe('opt-b');
+      expect(getChallengeProgress(result.state, 'rate-limiter', 'storage-strategy')?.demonstratedUnderstanding).toBe(false);
+    }
+  });
+
+  it('should migrate a legacy v2 YAML export into the url-shortener namespace', async () => {
+    const { importFromYaml } = await import('@/features/progress/yaml-transfer');
+    const legacyYaml = [
+      'app: system-design-atlas',
+      'schemaVersion: 2',
+      'preferences:',
+      '  chatProvider: chatgpt',
+      '  focusMode: false',
+      'lastVisited: null',
+      'archetypes: {}',
+      'challenges:',
+      '  cache-eviction-ttl:',
+      '    challengeId: cache-eviction-ttl',
+      '    attemptedAt: "2025-01-01T00:00:00Z"',
+      '    completedAt: "2025-01-01T00:05:00Z"',
+      '    selectedOptionId: opt-lru-jitter',
+      '    demonstratedUnderstanding: true',
+    ].join('\n');
+
+    const result = await importFromYaml(legacyYaml);
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.state.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+      const progress = getChallengeProgress(result.state, 'url-shortener', 'cache-eviction-ttl');
+      expect(progress?.selectedOptionId).toBe('opt-lru-jitter');
+      expect(progress?.demonstratedUnderstanding).toBe(true);
+      expect(progress?.completedAt).toBe('2025-01-01T00:05:00Z');
+    }
+  });
 });
 
 describe('notesReducer and validation', () => {
@@ -599,5 +812,17 @@ describe('cache-load calculation', () => {
     const hitRatio = 1;
     const expectedReads = requestsPerSecond * (1 - hitRatio);
     expect(expectedReads).toBe(0);
+  });
+});
+
+
+describe('decision journal import validation', () => {
+  it('preserves valid entries and discards malformed imported entries', () => {
+    const entry = { id: 'decision-1', timestamp: '2026-01-01T00:00:00Z', stepId: 'cache',
+      title: 'Cache policy', decision: 'Expire entries', rationale: 'Bound staleness', consequences: 'More cache misses' };
+    const result = validateProgressState({ ...initialState, decisionJournal: [entry, null, 42,
+      { ...entry, timestamp: null }, { ...entry, decision: {} }] });
+    expect(result.valid).toBe(true);
+    if (result.valid) expect(result.state.decisionJournal).toEqual([entry]);
   });
 });

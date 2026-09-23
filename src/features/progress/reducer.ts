@@ -1,8 +1,8 @@
-import { ProgressState, ProgressAction } from './types';
+import { CURRENT_SCHEMA_VERSION, ProgressState, ProgressAction, type ChallengeProgress } from './types';
 
 export const initialState: ProgressState = {
   app: 'system-design-atlas',
-  schemaVersion: 2,
+  schemaVersion: CURRENT_SCHEMA_VERSION,
   preferences: {
     chatProvider: 'chatgpt',
     focusMode: false,
@@ -16,6 +16,21 @@ export const initialState: ProgressState = {
     steps: {},
   },
 };
+
+/**
+ * Combines two records of the same challenge. Attempts are never lost:
+ * earliest attempt wins, understanding and completion are sticky, and the
+ * first non-empty notes draft is kept.
+ */
+function mergeChallengeProgress(current: ChallengeProgress, imported: ChallengeProgress): ChallengeProgress {
+  return {
+    ...current,
+    attemptedAt: new Date(imported.attemptedAt) < new Date(current.attemptedAt) ? imported.attemptedAt : current.attemptedAt,
+    demonstratedUnderstanding: current.demonstratedUnderstanding || imported.demonstratedUnderstanding,
+    completedAt: current.completedAt || imported.completedAt,
+    notesDraft: current.notesDraft || imported.notesDraft,
+  };
+}
 
 export function progressReducer(state: ProgressState, action: ProgressAction): ProgressState {
   switch (action.type) {
@@ -111,19 +126,22 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
       };
     }
     case 'SAVE_CHALLENGE_ATTEMPT': {
-      const { challengeId, selectedOptionId, demonstratedUnderstanding, notesDraft, timestamp } = action;
-      const prev = state.challenges?.[challengeId];
+      const { archetypeId, challengeId, selectedOptionId, demonstratedUnderstanding, notesDraft, timestamp } = action;
+      const prev = state.challenges?.[archetypeId]?.[challengeId];
       return {
         ...state,
         challenges: {
           ...(state.challenges || {}),
-          [challengeId]: {
-            challengeId,
-            attemptedAt: prev?.attemptedAt || timestamp,
-            completedAt: demonstratedUnderstanding ? timestamp : (prev?.completedAt || null),
-            selectedOptionId,
-            demonstratedUnderstanding: prev?.demonstratedUnderstanding || demonstratedUnderstanding,
-            notesDraft: notesDraft !== undefined ? notesDraft : prev?.notesDraft,
+          [archetypeId]: {
+            ...(state.challenges?.[archetypeId] || {}),
+            [challengeId]: {
+              challengeId,
+              attemptedAt: prev?.attemptedAt || timestamp,
+              completedAt: demonstratedUnderstanding ? timestamp : (prev?.completedAt || null),
+              selectedOptionId,
+              demonstratedUnderstanding: prev?.demonstratedUnderstanding || demonstratedUnderstanding,
+              notesDraft: notesDraft !== undefined ? notesDraft : prev?.notesDraft,
+            },
           },
         },
       };
@@ -233,22 +251,17 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
         }
       }
 
-      // Merge challenges
+      // Merge challenges, namespaced per archetype so identically-named
+      // challenges in different chapters never overwrite each other.
       const mergedChallenges = { ...(state.challenges || {}) };
       if (imported.challenges) {
-        for (const [cId, impChallenge] of Object.entries(imported.challenges)) {
-          const cur = mergedChallenges[cId];
-          if (!cur) {
-            mergedChallenges[cId] = impChallenge;
-          } else {
-            mergedChallenges[cId] = {
-              ...cur,
-              attemptedAt: new Date(impChallenge.attemptedAt) < new Date(cur.attemptedAt) ? impChallenge.attemptedAt : cur.attemptedAt,
-              demonstratedUnderstanding: cur.demonstratedUnderstanding || impChallenge.demonstratedUnderstanding,
-              completedAt: cur.completedAt || impChallenge.completedAt,
-              notesDraft: cur.notesDraft || impChallenge.notesDraft,
-            };
+        for (const [archId, importedChapter] of Object.entries(imported.challenges)) {
+          const currentChapter = { ...(mergedChallenges[archId] || {}) };
+          for (const [cId, impChallenge] of Object.entries(importedChapter)) {
+            const cur = currentChapter[cId];
+            currentChapter[cId] = cur ? mergeChallengeProgress(cur, impChallenge) : impChallenge;
           }
+          mergedChallenges[archId] = currentChapter;
         }
       }
 

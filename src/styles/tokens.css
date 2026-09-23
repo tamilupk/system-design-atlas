@@ -21,6 +21,8 @@
 
   /* Theme & Semantic Aliases (Uber-inspired neutral palette) */
   --color-primary: #000000;
+  /* RGB triplet of --color-primary, for rgba() tints that cannot interpolate a hex value. */
+  --color-primary-rgb: 0, 0, 0;
   --color-primary-hover: #1A1A1A;
   --color-primary-dark: #000000;
   --color-primary-light: #F0F0F0;

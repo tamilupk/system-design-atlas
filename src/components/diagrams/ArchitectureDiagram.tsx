@@ -4,6 +4,7 @@ import { DiagramNode } from './DiagramNode';
 import { DiagramEdge } from './DiagramEdge';
 import { FlowControls } from './FlowControls';
 import { DiagramContextHUD } from './DiagramContextHUD';
+import { resolveDiagramHighlight } from './highlight';
 import { Maximize2, Info } from 'lucide-react';
 import styles from './ArchitectureDiagram.module.css';
 
@@ -12,6 +13,19 @@ interface ArchitectureDiagramProps {
   selectedNodeId: string | null;
   onNodeClick: (nodeId: string) => void;
   activeFlowSequenceId?: string;
+  /**
+   * Node IDs the current lesson step wants to draw attention to, from
+   * `LessonStep.highlightedNodes`. Precedence, highest first:
+   *
+   * 1. Manual node selection — exclusive; step and flow highlights are ignored.
+   * 2. The active flow event's `highlightNodeIds` / `edgeIds`.
+   * 3. These step highlights, unioned with (2) so the components a step is about stay
+   *    emphasized while the flow animates, across flow reset and flow switching.
+   *
+   * Step highlights only ever emphasize nodes, never edges. IDs that do not exist in the
+   * current diagram state are ignored, so a stale id cannot dim the whole canvas.
+   */
+  highlightedNodes?: readonly string[];
   onInspectNode?: (conceptId?: string, node?: DiagramNodeType) => void;
   onAskAIAboutNode?: (conceptId?: string) => void;
   onClearNodeSelection?: () => void;
@@ -24,6 +38,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
   selectedNodeId,
   onNodeClick,
   activeFlowSequenceId,
+  highlightedNodes,
   onInspectNode,
   onAskAIAboutNode,
   onClearNodeSelection,
@@ -185,26 +200,15 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
   }, [isPlaying, activeFlowSequence, flowRunId]);
 
   const currentEvent = activeFlowSequence?.events[currentEventIndex];
-  
-  const highlightedNodeIds = new Set<string>();
-  const highlightedEdgeIds = new Set<string>();
-  let hasHighlight = false;
 
-  if (selectedNodeId) {
-    hasHighlight = true;
-    highlightedNodeIds.add(selectedNodeId);
-    edges.forEach(edge => {
-      if (edge.from === selectedNodeId || edge.to === selectedNodeId) {
-        highlightedEdgeIds.add(edge.id);
-        highlightedNodeIds.add(edge.from);
-        highlightedNodeIds.add(edge.to);
-      }
-    });
-  } else if (activeFlowSequence && currentEvent) {
-    hasHighlight = true;
-    currentEvent.highlightNodeIds?.forEach((id: string) => highlightedNodeIds.add(id));
-    currentEvent.edgeIds?.forEach(id => highlightedEdgeIds.add(id));
-  }
+  // Single source of truth for emphasis; see `resolveDiagramHighlight` for precedence.
+  const { nodeIds: highlightedNodeIds, edgeIds: highlightedEdgeIds, hasHighlight } = resolveDiagramHighlight({
+    nodes,
+    edges,
+    selectedNodeId,
+    currentFlowEvent: currentEvent,
+    stepHighlightedNodes: highlightedNodes,
+  });
 
   // Calculate viewBox
   const viewBox = useMemo(() => {

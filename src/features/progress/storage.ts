@@ -1,7 +1,11 @@
 import { ProgressState } from './types';
-import { validateProgressState } from './validation';
+import { migrateProgress } from './migrations';
 
-const STORAGE_KEY = 'system-design-atlas-progress-v1';
+/**
+ * Storage key is intentionally *not* versioned: schema upgrades are handled by
+ * `migrateProgress`, so renaming this key would orphan existing users' progress.
+ */
+export const STORAGE_KEY = 'system-design-atlas-progress-v1';
 
 export function isStorageAvailable(): boolean {
   if (typeof window === 'undefined') return false;
@@ -10,7 +14,7 @@ export function isStorageAvailable(): boolean {
     window.localStorage.setItem(x, x);
     window.localStorage.removeItem(x);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -21,13 +25,12 @@ export function loadProgress(): ProgressState | null {
     const dataStr = window.localStorage.getItem(STORAGE_KEY);
     if (!dataStr) return null;
     const data = JSON.parse(dataStr);
-    const result = validateProgressState(data);
-    if (result.valid) {
-      return result.state;
-    } else {
-      console.warn('Progress storage corrupt or invalid schema:', result.error);
-      return null;
+    const migrated = migrateProgress(data);
+    if (migrated) {
+      return migrated;
     }
+    console.warn('Progress storage corrupt or invalid schema');
+    return null;
   } catch (e) {
     console.warn('Failed to parse progress from storage:', e);
     return null;

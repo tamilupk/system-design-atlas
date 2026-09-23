@@ -1,8 +1,8 @@
 import React, { createContext, useReducer, useEffect, ReactNode, useState } from 'react';
 import { ProgressState, ProgressAction } from './types';
 import { progressReducer, initialState } from './reducer';
-import { loadProgress, saveProgress, isStorageAvailable } from './storage';
-import { validateProgressState } from './validation';
+import { loadProgress, saveProgress, isStorageAvailable, STORAGE_KEY } from './storage';
+import { migrateProgress } from './migrations';
 
 interface ProgressContextValue {
   state: ProgressState;
@@ -38,12 +38,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'system-design-atlas-progress-v1' && e.newValue) {
+      if (e.key === STORAGE_KEY && e.newValue) {
         try {
           const data = JSON.parse(e.newValue);
-          const result = validateProgressState(data);
-          if (result.valid) {
-            dispatch({ type: 'REPLACE_STATE', state: result.state });
+          const migrated = migrateProgress(data);
+          if (migrated) {
+            dispatch({ type: 'REPLACE_STATE', state: migrated });
           }
         } catch (err) {
           console.warn('Failed to sync progress from other tab', err);

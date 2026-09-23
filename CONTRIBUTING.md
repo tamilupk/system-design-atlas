@@ -19,14 +19,13 @@ All contributions must adhere to these pedagogical principles:
 ## Development Setup
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22 (matching CI)
 - npm 10+
 
 ### Clone & Install
 ```bash
-git clone https://github.com/your-username/system-design-atlas.git
-cd system-design-atlas
-npm install
+# Clone your fork, then change into its directory.
+npm ci
 ```
 
 ### Development Server
@@ -65,7 +64,11 @@ npm test
 # 4. Production Build & Static Prerender
 npm run build
 
-# 5. End-to-End Tests
+# 5. Generated HTML checks
+npm run test:build
+
+# 6. End-to-End Tests (install Chromium once)
+npx playwright install chromium
 npm run test:e2e
 ```
 
@@ -75,10 +78,9 @@ npm run test:e2e
 
 Tracked here so contributors and agents pick these up before adding new features:
 
-1. **Make `src/pages/HomePage.tsx` chapter-agnostic.** It currently hard-codes `STEP_IDS` and `STEP_TITLES` maps for `'url-shortener'` only (kept lightweight on purpose so the home page never imports lesson UI). When a second chapter becomes available, replace these maps with step metadata sourced from the catalog or a lazy registry query, so new chapters don't require editing `HomePage.tsx`.
-2. **Namespace challenge IDs in progress state.** `state.challenges` is a flat `Record<string, ChallengeProgress>` keyed by bare `challengeId`, so two chapters shipping the same challenge ID would collide. Before the second chapter lands, either prefix IDs (`url-shortener:cache-eviction-ttl`) or re-key the record as `[archetypeId][challengeId]` — with a schema migration for existing stored progress (see `docs/progress-format.md`).
-3. **Generalize `scripts/prerender.ts`.** Route generation for chapter/step/concept pages currently hard-codes `url-shortener` and the four shipped concepts; it must iterate the catalog/registry when more chapters become available.
-4. **Scaffold the next planned archetype.** The catalog (`src/archetypes/catalog.ts`) lists 19 planned chapters across the `foundation`, `advanced`, and `genai` stages — the next foundation entries are `product-catalog`, `photo-video`, and `notifications`. Follow `docs/authoring-archetypes.md` to scaffold one end-to-end.
+1. Add reviewed curriculum content for the planned chapters using the authoring guide.
+2. Keep reference steps moving toward shared primitives when changing them; do not copy remaining chapter-private styles into new chapters.
+3. Consider extracting focused hooks/components from the large lesson page when changing its behavior. Preserve its existing UI and regression coverage.
 
 ---
 

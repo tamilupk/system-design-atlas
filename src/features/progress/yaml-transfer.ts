@@ -27,7 +27,10 @@ export async function importFromYaml(
   try {
     const { parse } = await import('yaml');
     const data = parse(content, { customTags: [], maxAliasCount: 10 });
-    
+
+    // validateProgressState both validates and migrates to the current schema,
+    // so an imported v1/v2 file is namespaced exactly like a stored one. It is
+    // used directly (rather than migrateProgress) to surface the specific error.
     const result = validateProgressState(data);
     if (!result.valid) {
       return { valid: false, error: result.error };
@@ -53,7 +56,7 @@ export async function importFromYaml(
 
     return { valid: true, state, summary: { knownArchetypes, unknownArchetypes, totalCompletedSteps } };
 
-  } catch (e: any) {
-    return { valid: false, error: e.message || 'Invalid YAML format' };
+  } catch (error: unknown) {
+    return { valid: false, error: error instanceof Error ? error.message : 'Invalid YAML format' };
   }
 }

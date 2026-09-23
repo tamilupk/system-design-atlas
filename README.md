@@ -4,7 +4,6 @@
 [![React 19](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF.svg)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-Passing-success.svg)](https://vitest.dev/)
 
 An interactive, decision-driven system design curriculum and architecture simulator built for engineers with 10+ years of experience preparing for senior, staff, and principal technical interviews at tier-one tech companies.
 
@@ -17,7 +16,7 @@ An interactive, decision-driven system design curriculum and architecture simula
 - 🎯 **Decision-Based Learning**: Interactive interview challenges following the `Predict → Choose → Simulate → Explain → Retry` loop, evaluating real trade-offs and edge cases under peak loads.
 - 📝 **Dual-Scope Study Notes**: Candidate notes for either the active step or the entire chapter, auto-saved to browser storage and exportable via YAML.
 - 🔍 **Real URLs & Static Prerendering**: HTML5 History push-state routing (`/archetypes/url-shortener/steps/cache/`, `/concepts/cache/`) with build-time static HTML prerendering, automated sitemap, and robots.txt for search engine indexing.
-- 💾 **Safe Local Progress**: Zero-login, 100% private client-side progress tracking with schema migrations, reset confirmation, and YAML import/export transfer.
+- 💾 **Safe Local Progress**: Local browser progress tracking without a login with schema migrations, reset confirmation, and YAML import/export transfer.
 - 🤖 **Contextual AI Assistant**: Pre-formatted, prompt-engineered templates for ChatGPT, Claude, and Gemini populated with current step context, architecture state, and trade-offs.
 
 ---
@@ -54,17 +53,16 @@ The authoritative list lives in [`src/archetypes/catalog.ts`](src/archetypes/cat
 ## Quickstart
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22 (matching CI)
 - npm 10+
 
 ### Installation & Development
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/system-design-atlas.git
-cd system-design-atlas
+# Clone your fork, then change into its directory.
 
 # Install dependencies
-npm install
+npm ci
 
 # Start Vite dev server
 npm run dev
@@ -83,6 +81,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | `npm run preview` | Previews the production build locally. |
 | `npm run typecheck` | Type-checks the entire TypeScript codebase (`tsc --noEmit`). |
 | `npm run lint` | Runs ESLint with the flat config (`--max-warnings 0`). |
+| `npm run test:build` | Checks generated HTML after `npm run build`. |
 | `npm test` | Runs unit tests using Vitest. |
 | `npm run test:watch` | Runs Vitest in watch mode. |
 | `npm run test:e2e` | Runs Playwright end-to-end integration and visual verification tests. |
@@ -95,8 +94,9 @@ System Design Atlas is designed as a reusable framework. Adding a new archetype 
 
 1. **Read the Master Guide**: Open **[`docs/authoring-archetypes.md`](docs/authoring-archetypes.md)**.
 2. **Author with AI**: Copy the built-in Master Prompt into ChatGPT or Claude to generate complete, mathematically grounded curriculum specs.
-3. **Build with Antigravity**: Paste the generated spec into Antigravity to scaffold components, diagrams, and tests using the reusable primitives (`@/components/lesson/StepComponents` and `@/utils/diagram-builder`).
-4. **Register**: Add the chapter in `src/archetypes/catalog.ts` and `src/archetypes/registry.ts`.
+3. **Implement**: Give a coding agent the generated spec and the guide’s handoff prompt to scaffold components, diagrams, and tests using the reusable primitives (`@/components/lesson/StepComponents` and `@/utils/diagram-builder`).
+4. **Register**: Add the chapter in `src/archetypes/catalog.ts`, `src/archetypes/registry.ts`, and `src/archetypes/step-manifests.ts`.
+5. **Verify**: Run every acceptance command and desktop review in the guide.
 
 ---
 
@@ -141,3 +141,5 @@ Contributions from the distributed systems community are welcome! Please read **
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+Challenge outcomes are authored teaching scenarios, not live load tests or measured infrastructure benchmarks. The app copies prompts to external AI services only through user actions; those services have their own data policies.

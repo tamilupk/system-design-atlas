@@ -1,6 +1,7 @@
 import { useState, useMemo, type FC } from 'react';
 import styles from './CurriculumList.module.css';
 import type { ArchetypeMetadata } from '@/types/archetype';
+import type { ChapterStepManifest } from '@/types/lesson';
 import type { ProgressState } from '@/features/progress/types';
 import { getChapterProgress } from '@/features/progress/selectors';
 import { STAGE_LABELS } from '@/archetypes/catalog';
@@ -9,14 +10,24 @@ import { ArchetypeRow } from './ArchetypeRow';
 interface CurriculumListProps {
   archetypes: readonly ArchetypeMetadata[];
   progressState: ProgressState;
-  stepIds: Record<string, readonly string[]>;
+  /** Per-chapter step manifests, keyed by archetype id. */
+  stepManifests: Readonly<Record<string, ChapterStepManifest>>;
 }
 
 type FilterTab = 'All' | 'Available' | 'In progress' | 'Completed' | 'Planned';
 
-export const CurriculumList: FC<CurriculumListProps> = ({ archetypes, progressState, stepIds }) => {
+export const CurriculumList: FC<CurriculumListProps> = ({ archetypes, progressState, stepManifests }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+
+  // Derive plain step-id lists once so filtering and rendering stay cheap and stable.
+  const stepIdsByArchetype = useMemo(() => {
+    const result: Record<string, string[]> = {};
+    for (const [id, manifest] of Object.entries(stepManifests)) {
+      result[id] = manifest.map((step) => step.id);
+    }
+    return result;
+  }, [stepManifests]);
 
   const filteredArchetypes = useMemo(() => {
     return archetypes.filter(arch => {
@@ -28,7 +39,7 @@ export const CurriculumList: FC<CurriculumListProps> = ({ archetypes, progressSt
         if (!matchesTitle && !matchesDesc && !matchesTags) return false;
       }
 
-      const chapterProgress = getChapterProgress(progressState, arch.id, [...(stepIds[arch.id] || [])]);
+      const chapterProgress = getChapterProgress(progressState, arch.id, stepIdsByArchetype[arch.id] || []);
       const isCompleted = chapterProgress.percentage === 100 && chapterProgress.total > 0;
       const isInProgress = chapterProgress.visited > 0 && !isCompleted;
       
@@ -40,7 +51,7 @@ export const CurriculumList: FC<CurriculumListProps> = ({ archetypes, progressSt
         default: return true;
       }
     });
-  }, [archetypes, searchQuery, activeFilter, progressState, stepIds]);
+  }, [archetypes, searchQuery, activeFilter, progressState, stepIdsByArchetype]);
 
   const grouped = filteredArchetypes.reduce((acc, arch) => {
     const list = acc[arch.stage] ?? [];
@@ -93,7 +104,7 @@ export const CurriculumList: FC<CurriculumListProps> = ({ archetypes, progressSt
                 </h2>
                 <div className={styles.rows}>
                   {stageArchetypes.map(arch => {
-                    const chapterProgress = getChapterProgress(progressState, arch.id, [...(stepIds[arch.id] || [])]);
+                    const chapterProgress = getChapterProgress(progressState, arch.id, stepIdsByArchetype[arch.id] || []);
                     return (
                       <ArchetypeRow
                         key={arch.id}

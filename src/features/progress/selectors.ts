@@ -35,6 +35,14 @@ export function isStepCompleted(state: ProgressState, archetypeId: string, stepI
   return !!state.archetypes[archetypeId]?.steps[stepId]?.completedAt;
 }
 
+/**
+ * Saved progress for one challenge within one chapter. Challenge IDs are only
+ * unique per chapter, so both keys are required.
+ */
+export function getChallengeProgress(state: ProgressState, archetypeId: string, challengeId: string) {
+  return state.challenges?.[archetypeId]?.[challengeId] ?? null;
+}
+
 export function getOverallProgress(state: ProgressState, availableArchetypes: Record<string, string[]>) {
   let completedCount = 0;
   let inProgressCount = 0;

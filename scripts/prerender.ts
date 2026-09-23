@@ -1,9 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { archetypeCatalog } from '../src/archetypes/catalog';
-import { urlShortenerLesson } from '../src/archetypes/url-shortener/lesson';
+import { archetypeRegistry } from '../src/archetypes/registry';
+import { chapterStepManifests } from '../src/archetypes/step-manifests';
+import { loadValidatedChapters, type ChapterSources } from '../src/archetypes/load-validated';
+import { buildConceptIndex } from '../src/archetypes/concept-index';
 import { getAllConcepts } from '../src/concepts/registry';
-import { urlShortenerConceptContext } from '../src/archetypes/url-shortener/concept-context';
+import { ProgressContext } from '../src/features/progress/ProgressProvider';
+import { initialState } from '../src/features/progress/reducer';
+import { LessonProvider } from '../src/components/lesson/LessonContext';
+import type { ArchetypeModule } from '../src/types/archetype';
+import type { LessonStep } from '../src/types/lesson';
+import type { ProgressAction } from '../src/features/progress/types';
 
 const BASE_URL = 'https://systemdesign.tamilarasu.dev';
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
@@ -18,6 +28,12 @@ interface RouteMeta {
   fallbackHtml: string;
   changefreq?: string;
   priority?: string;
+  /**
+   * Extra stylesheets to link from `<head>`. Lesson pages server-render the
+   * real step components, whose CSS-module classes live in lazily-loaded
+   * chunks that the base template does not reference.
+   */
+  stylesheets?: string[];
 }
 
 function escapeHtml(str: string): string {
@@ -29,8 +45,41 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
-function buildHtml(template: string, meta: RouteMeta): string {
-  let html = template;
+/**
+ * Every CSS asset emitted by `vite build`, as root-absolute hrefs.
+ *
+ * Server-rendered lesson markup carries CSS-module class names from chunks the
+ * base template never links, so lesson pages link the full set. Browsers
+ * deduplicate by URL, so this costs nothing extra once the app hydrates.
+ */
+function listStylesheetAssets(): string[] {
+  const assetsDir = path.join(DIST_DIR, 'assets');
+  if (!fs.existsSync(assetsDir)) return [];
+  return fs
+    .readdirSync(assetsDir)
+    .filter((file) => file.endsWith('.css'))
+    .sort()
+    .map((file) => `/assets/${file}`);
+}
+
+/**
+ * Restores `<div id="root"></div>` so the template can be reused.
+ *
+ * The home route's output *is* `dist/index.html`, so without this a second
+ * `npm run prerender` (without an intervening `vite build`) would nest every
+ * page inside the previous run's home markup. The greedy match runs to the last
+ * `</div>` before `</body>`, which is always the root container's own tag.
+ */
+function resetRootContainer(template: string): string {
+  return template.replace(/<div id="root">[\s\S]*<\/div>\s*<\/body>/, '<div id="root"></div>\n  </body>');
+}
+
+export function buildHtml(template: string, meta: RouteMeta): string {
+  // A standalone rerun starts from the generated home page. Replace managed tags.
+  let html = template
+    .replace(/<link\b[^>]*rel="canonical"[^>]*>\s*/gi, '')
+    .replace(/<meta\b[^>]*(?:property="og:[^"]*"|name="twitter:[^"]*")[^>]*>\s*/gi, '')
+    .replace(/<script\b[^>]*type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>\s*/gi, '');
 
   // Replace Title
   html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(meta.title)}</title>`);
@@ -54,10 +103,19 @@ function buildHtml(template: string, meta: RouteMeta): string {
     <meta name="twitter:title" content="${escapeHtml(meta.title)}" />
     <meta name="twitter:description" content="${escapeHtml(meta.description)}" />
     <script type="application/ld+json">
-${JSON.stringify(meta.jsonLd, null, 2)}
+${JSON.stringify(meta.jsonLd, null, 2).replace(/</g, '\\u003c')}
     </script>
   `;
   html = html.replace('</head>', `${headTags}\n</head>`);
+
+  // Link the stylesheets the server-rendered markup depends on
+  const missingStyles = (meta.stylesheets ?? []).filter((href) => !html.includes(`href="${href}"`));
+  if (missingStyles.length > 0) {
+    const styleTags = missingStyles
+      .map((href) => `    <link rel="stylesheet" crossorigin href="${href}" />`)
+      .join('\n');
+    html = html.replace('</head>', `${styleTags}\n</head>`);
+  }
 
   // Inject fallback HTML inside #root
   html = html.replace(
@@ -68,9 +126,110 @@ ${JSON.stringify(meta.jsonLd, null, 2)}
   return html;
 }
 
-function generateRoutes(): RouteMeta[] {
+/**
+ * Renders a step's real component to static markup.
+ *
+ * This is the same content source the interactive app uses, so there is no
+ * second SEO copy of a lesson to keep in sync. Progress is supplied as a
+ * frozen initial state with a no-op dispatch and `storageAvailable: false`,
+ * which keeps browser-only persistence and interactive state out of the
+ * static output. `LessonProvider` supplies the chapter ID so namespaced
+ * challenge state resolves exactly as it does at runtime.
+ */
+function renderStepBody(module: ArchetypeModule, step: LessonStep): string {
+  const StepComponent = module.stepComponents[step.id];
+  if (!StepComponent) throw new Error(`Missing component: ${module.metadata.id}/${step.id}`);
+
+  const noopDispatch = (() => {}) as React.Dispatch<ProgressAction>;
+
+  return renderToStaticMarkup(
+    React.createElement(
+      ProgressContext.Provider,
+      { value: { state: initialState, dispatch: noopDispatch, storageAvailable: false } },
+      React.createElement(
+        LessonProvider,
+        { archetypeId: module.metadata.id,
+          children: React.createElement(StepComponent, { step, onConceptClick: () => {} }) }
+      )
+    )
+  );
+}
+
+/**
+ * Describes the diagram state a step teaches, straight from `diagrams.ts`.
+ *
+ * The interactive canvas is not meaningful without JavaScript, so the static
+ * page spells out the nodes and request flows in text instead.
+ */
+function renderDiagramDescription(module: ArchetypeModule, step: LessonStep): string {
+  if (!step.diagramStateId) return '';
+  const state = module.diagrams.states[step.diagramStateId];
+  if (!state) return '';
+
+  const nodes = state.nodes
+    .map((node) => {
+      const responsibilities = node.spec?.responsibilities ?? [];
+      return `
+            <li style="margin-bottom: 0.75rem;">
+              <strong>${escapeHtml(node.label)}</strong>
+              <span style="color: #777; font-size: 0.85rem; text-transform: uppercase; margin-left: 0.5rem;">${escapeHtml(node.role)}</span>
+              ${node.description ? `<p style="margin: 0.25rem 0 0 0; color: #444; line-height: 1.6;">${escapeHtml(node.description)}</p>` : ''}
+              ${responsibilities.length > 0 ? `
+                <ul style="margin: 0.35rem 0 0 0; padding-left: 1.25rem; color: #555; font-size: 0.9rem; line-height: 1.6;">
+                  ${responsibilities.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}
+                </ul>
+              ` : ''}
+            </li>`;
+    })
+    .join('');
+
+  const sequences = step.flowSequenceId
+    ? state.flowSequences.filter((sequence) => sequence.id === step.flowSequenceId)
+    : state.flowSequences;
+
+  const flows = sequences
+    .map((sequence) => `
+          <section style="margin-top: 1.25rem;">
+            <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0;">${escapeHtml(sequence.title)}</h3>
+            <ol style="margin: 0.5rem 0 0 0; padding-left: 1.5rem; color: #333; line-height: 1.7;">
+              ${sequence.events
+                .map((event) => `<li><strong>${escapeHtml(event.label)}</strong>${event.description ? ` — ${escapeHtml(event.description)}` : ''}</li>`)
+                .join('')}
+            </ol>
+          </section>`)
+    .join('');
+
+  if (!nodes && !flows) return '';
+
+  return `
+        <section style="margin-top: 2rem; padding: 1.25rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+          <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0;">Architecture at this Step</h2>
+          ${nodes ? `
+            <ul style="list-style: none; margin: 0.75rem 0 0 0; padding: 0;">
+              ${nodes}
+            </ul>
+          ` : ''}
+          ${flows}
+        </section>`;
+}
+
+/**
+ * Builds every static route from the catalog and the archetype registry.
+ *
+ * Planned chapters are skipped entirely: they get no lesson pages and no
+ * sitemap entries. Adding a chapter to the catalog and registry is enough —
+ * this generator never needs editing.
+ */
+export async function generateRoutes(sources: ChapterSources = {
+  catalog: archetypeCatalog, registry: archetypeRegistry, manifests: chapterStepManifests,
+}): Promise<RouteMeta[]> {
+  const { catalog: archetypeCatalog } = sources;
   const routes: RouteMeta[] = [];
   const allConcepts = getAllConcepts();
+  const stylesheets = listStylesheetAssets();
+
+  const chapters = await loadValidatedChapters(sources, allConcepts.map(concept => concept.id));
+  const conceptChapters = buildConceptIndex(chapters);
 
   // 1. Home Route
   const homeFallback = `
@@ -89,11 +248,11 @@ function generateRoutes(): RouteMeta[] {
             <article style="border: 1px solid #ddd; border-radius: 8px; padding: 1.25rem; background: #fafafa;">
               <div style="display: flex; justify-content: space-between; align-items: baseline;">
                 <h3 style="margin: 0; font-size: 1.25rem;">
-                  ${arch.availability === 'available' 
-                    ? `<a href="/archetypes/${arch.id}" style="color: #000; text-decoration: underline;">${escapeHtml(arch.title)}</a>` 
+                  ${arch.availability === 'available'
+                    ? `<a href="/archetypes/${arch.id}" style="color: #000; text-decoration: underline;">${escapeHtml(arch.title)}</a>`
                     : `${escapeHtml(arch.title)} <span style="font-size: 0.8rem; background: #eee; padding: 2px 6px; border-radius: 4px; color: #666;">Planned</span>`}
                 </h3>
-                <span style="font-size: 0.875rem; color: #777;">${arch.stage.toUpperCase()} · ${arch.estimatedMinutes} min</span>
+                <span style="font-size: 0.875rem; color: #777;">${arch.stage.toUpperCase()}${arch.estimatedMinutes ? ` · ${arch.estimatedMinutes} min` : ''}</span>
               </div>
               <p style="margin: 0.5rem 0 0 0; color: #444; font-size: 0.95rem; line-height: 1.5;">${escapeHtml(arch.description)}</p>
               ${arch.availability === 'available' ? `
@@ -158,29 +317,33 @@ function generateRoutes(): RouteMeta[] {
     fallbackHtml: homeFallback
   });
 
-  // 2. Archetype Route: URL Shortener
-  const urlShortenerMeta = archetypeCatalog.find(a => a.id === 'url-shortener');
-  const urlShortenerFallback = `
+  // 2. Chapter overview + step routes, one pair of loops per available chapter
+  for (const chapter of chapters) {
+    const { metadata, lesson } = chapter;
+    const chapterPath = `archetypes/${metadata.id}`;
+    const firstStep = lesson.steps[0];
+
+    const overviewFallback = `
     <main style="max-width: 900px; margin: 0 auto; padding: 2rem 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
       <nav style="font-size: 0.875rem; margin-bottom: 1rem; color: #666;">
         <a href="/" style="color: #666; text-decoration: underline;">Atlas</a> /
-        <span>URL Shortener</span>
+        <span>${escapeHtml(metadata.title)}</span>
       </nav>
 
       <header>
-        <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;">URL Shortener System Design</h1>
+        <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;">${escapeHtml(metadata.title)} System Design</h1>
         <p style="font-size: 1.125rem; color: #555; line-height: 1.6;">
-          ${escapeHtml(urlShortenerMeta?.description || 'Design a high-throughput, low-latency URL shortening service capable of handling billions of redirects.')}
+          ${escapeHtml(metadata.description)}
         </p>
       </header>
 
       <section style="margin-top: 2rem;">
         <h2 style="font-size: 1.5rem; font-weight: 700; border-bottom: 2px solid #eaeaea; padding-bottom: 0.5rem;">Lesson Steps</h2>
         <ol style="margin-top: 1rem; padding-left: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-          ${urlShortenerLesson.steps.map((step, idx) => `
+          ${lesson.steps.map((step, idx) => `
             <li>
               <h3 style="margin: 0; font-size: 1.125rem;">
-                <a href="/archetypes/url-shortener/steps/${step.id}" style="color: #000; text-decoration: underline;">
+                <a href="/${chapterPath}/steps/${step.id}" style="color: #000; text-decoration: underline;">
                   Step ${idx + 1}: ${escapeHtml(step.title)}
                 </a>
               </h3>
@@ -190,66 +353,69 @@ function generateRoutes(): RouteMeta[] {
         </ol>
       </section>
 
+      ${firstStep ? `
       <div style="margin-top: 2rem;">
-        <a href="/archetypes/url-shortener/steps/${urlShortenerLesson.steps[0]?.id}" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">
-          Start Lesson: ${escapeHtml(urlShortenerLesson.steps[0]?.title || '')} &rarr;
+        <a href="/${chapterPath}/steps/${firstStep.id}" style="display: inline-block; padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">
+          Start Lesson: ${escapeHtml(firstStep.title)} &rarr;
         </a>
       </div>
+      ` : ''}
     </main>
   `;
 
-  routes.push({
-    path: 'archetypes/url-shortener',
-    title: 'URL Shortener System Design Architecture — System Design Atlas',
-    description: 'End-to-end URL Shortener system design for senior engineers. High-throughput redirects, Base62 ID generation, cache-aside strategies, replication lag, and trade-offs.',
-    canonicalUrl: `${BASE_URL}/archetypes/url-shortener`,
-    changefreq: 'weekly',
-    priority: '0.9',
-    jsonLd: {
-      '@context': 'https://schema.org',
-      '@graph': [
-        {
-          '@type': 'TechArticle',
-          headline: 'URL Shortener System Design Architecture',
-          description: 'End-to-end URL Shortener system design for senior engineers. High-throughput redirects, Base62 ID generation, cache-aside strategies, replication lag, and trade-offs.',
-          url: `${BASE_URL}/archetypes/url-shortener`
-        },
-        {
-          '@type': 'BreadcrumbList',
-          itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Atlas', item: `${BASE_URL}/` },
-            { '@type': 'ListItem', position: 2, name: 'URL Shortener', item: `${BASE_URL}/archetypes/url-shortener` }
-          ]
-        }
-      ]
-    },
-    fallbackHtml: urlShortenerFallback
-  });
+    routes.push({
+      path: chapterPath,
+      title: `${metadata.title} System Design Architecture — System Design Atlas`,
+      description: metadata.description,
+      canonicalUrl: `${BASE_URL}/${chapterPath}`,
+      changefreq: 'weekly',
+      priority: '0.9',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'TechArticle',
+            headline: `${metadata.title} System Design Architecture`,
+            description: metadata.description,
+            url: `${BASE_URL}/${chapterPath}`
+          },
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Atlas', item: `${BASE_URL}/` },
+              { '@type': 'ListItem', position: 2, name: metadata.title, item: `${BASE_URL}/${chapterPath}` }
+            ]
+          }
+        ]
+      },
+      fallbackHtml: overviewFallback
+    });
 
-  // 3. Step Routes
-  urlShortenerLesson.steps.forEach((step, idx) => {
-    const nextStep = urlShortenerLesson.steps[idx + 1];
-    const prevStep = urlShortenerLesson.steps[idx - 1];
+    // 3. Step Routes
+    lesson.steps.forEach((step, idx) => {
+      const nextStep = lesson.steps[idx + 1];
+      const prevStep = lesson.steps[idx - 1];
+      const stepConcepts = step.concepts ?? [];
 
-    const stepFallback = `
+      const stepFallback = `
       <main style="max-width: 900px; margin: 0 auto; padding: 2rem 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
         <nav style="font-size: 0.875rem; margin-bottom: 1rem; color: #666;">
           <a href="/" style="color: #666; text-decoration: underline;">Atlas</a> /
-          <a href="/archetypes/url-shortener" style="color: #666; text-decoration: underline;">URL Shortener</a> /
+          <a href="/${chapterPath}" style="color: #666; text-decoration: underline;">${escapeHtml(metadata.title)}</a> /
           <span>${escapeHtml(step.title)}</span>
         </nav>
 
         <header>
-          <div style="font-size: 0.875rem; color: #777; font-weight: 600; text-transform: uppercase;">Step ${idx + 1} of ${urlShortenerLesson.steps.length}</div>
+          <div style="font-size: 0.875rem; color: #777; font-weight: 600; text-transform: uppercase;">Step ${idx + 1} of ${lesson.steps.length}</div>
           <h1 style="font-size: 2rem; font-weight: 800; margin: 0.25rem 0 0.5rem 0;">${escapeHtml(step.title)}</h1>
           <p style="font-size: 1.1rem; color: #444; line-height: 1.6;">${escapeHtml(step.objective)}</p>
         </header>
 
-        ${step.concepts.length > 0 ? `
+        ${stepConcepts.length > 0 ? `
           <section style="margin-top: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 6px;">
             <strong style="font-size: 0.9rem; color: #333;">Architectural Concepts in this Step:</strong>
-            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-              ${step.concepts.map(cId => {
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+              ${stepConcepts.map(cId => {
                 const conceptObj = allConcepts.find(c => c.id === cId);
                 return `<a href="/concepts/${cId}" style="padding: 4px 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85rem; color: #111; text-decoration: none;">${escapeHtml(conceptObj?.title || cId)}</a>`;
               }).join('')}
@@ -257,18 +423,24 @@ function generateRoutes(): RouteMeta[] {
           </section>
         ` : ''}
 
+        <div style="margin-top: 2rem;">
+          ${renderStepBody(chapter, step)}
+        </div>
+
+        ${renderDiagramDescription(chapter, step)}
+
         <nav style="margin-top: 2.5rem; display: flex; justify-content: space-between; border-top: 1px solid #eaeaea; padding-top: 1.5rem;">
           ${prevStep ? `
-            <a href="/archetypes/url-shortener/steps/${prevStep.id}" style="color: #000; text-decoration: underline; font-weight: 500;">
+            <a href="/${chapterPath}/steps/${prevStep.id}" style="color: #000; text-decoration: underline; font-weight: 500;">
               &larr; Previous: ${escapeHtml(prevStep.title)}
             </a>
           ` : '<span></span>'}
           ${nextStep ? `
-            <a href="/archetypes/url-shortener/steps/${nextStep.id}" style="color: #000; text-decoration: underline; font-weight: 500;">
+            <a href="/${chapterPath}/steps/${nextStep.id}" style="color: #000; text-decoration: underline; font-weight: 500;">
               Next: ${escapeHtml(nextStep.title)} &rarr;
             </a>
           ` : `
-            <a href="/archetypes/url-shortener" style="color: #000; text-decoration: underline; font-weight: 500;">
+            <a href="/${chapterPath}" style="color: #000; text-decoration: underline; font-weight: 500;">
               Back to Overview &rarr;
             </a>
           `}
@@ -276,39 +448,41 @@ function generateRoutes(): RouteMeta[] {
       </main>
     `;
 
-    routes.push({
-      path: `archetypes/url-shortener/steps/${step.id}`,
-      title: `${step.title} | URL Shortener System Design — System Design Atlas`,
-      description: `Step ${idx + 1} of ${urlShortenerLesson.steps.length}: ${step.objective}. Senior system design engineering considerations, architectural trade-offs, and failure mode analysis.`,
-      canonicalUrl: `${BASE_URL}/archetypes/url-shortener/steps/${step.id}`,
-      changefreq: 'weekly',
-      priority: '0.8',
-      jsonLd: {
-        '@context': 'https://schema.org',
-        '@graph': [
-          {
-            '@type': 'TechArticle',
-            headline: `${step.title} | URL Shortener System Design`,
-            description: `Step ${idx + 1} of ${urlShortenerLesson.steps.length}: ${step.objective}`,
-            url: `${BASE_URL}/archetypes/url-shortener/steps/${step.id}`
-          },
-          {
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Atlas', item: `${BASE_URL}/` },
-              { '@type': 'ListItem', position: 2, name: 'URL Shortener', item: `${BASE_URL}/archetypes/url-shortener` },
-              { '@type': 'ListItem', position: 3, name: step.title, item: `${BASE_URL}/archetypes/url-shortener/steps/${step.id}` }
-            ]
-          }
-        ]
-      },
-      fallbackHtml: stepFallback
+      routes.push({
+        path: `${chapterPath}/steps/${step.id}`,
+        title: `${step.title} | ${metadata.title} System Design — System Design Atlas`,
+        description: `Step ${idx + 1} of ${lesson.steps.length}: ${step.objective}. Senior system design engineering considerations, architectural trade-offs, and failure mode analysis.`,
+        canonicalUrl: `${BASE_URL}/${chapterPath}/steps/${step.id}`,
+        changefreq: 'weekly',
+        priority: '0.8',
+        stylesheets,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'TechArticle',
+              headline: `${step.title} | ${metadata.title} System Design`,
+              description: `Step ${idx + 1} of ${lesson.steps.length}: ${step.objective}`,
+              url: `${BASE_URL}/${chapterPath}/steps/${step.id}`
+            },
+            {
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Atlas', item: `${BASE_URL}/` },
+                { '@type': 'ListItem', position: 2, name: metadata.title, item: `${BASE_URL}/${chapterPath}` },
+                { '@type': 'ListItem', position: 3, name: step.title, item: `${BASE_URL}/${chapterPath}/steps/${step.id}` }
+              ]
+            }
+          ]
+        },
+        fallbackHtml: stepFallback
+      });
     });
-  });
+  }
 
-  // 4. Concept Routes
+  // 4. Concept Routes — chapter-agnostic, aggregating every available chapter
   allConcepts.forEach(concept => {
-    const context = urlShortenerConceptContext[concept.id];
+    const appliedIn = conceptChapters.get(concept.id) ?? [];
     const conceptFallback = `
       <main style="max-width: 900px; margin: 0 auto; padding: 2rem 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
         <nav style="font-size: 0.875rem; margin-bottom: 1rem; color: #666;">
@@ -359,20 +533,33 @@ function generateRoutes(): RouteMeta[] {
 
         ${concept.failureModes.length > 0 ? `
           <section style="margin-top: 2rem;">
-            <h2 style="font-size: 1.35rem; font-weight: 700;">Production Failure Modes & Edge Cases</h2>
+            <h2 style="font-size: 1.35rem; font-weight: 700;">Production Failure Modes &amp; Edge Cases</h2>
             <ul style="padding-left: 1.5rem; margin-top: 0.5rem; color: #333; line-height: 1.6;">
               ${concept.failureModes.map(fm => `<li>${escapeHtml(fm)}</li>`).join('')}
             </ul>
           </section>
         ` : ''}
 
-        ${context ? `
-          <section style="margin-top: 2rem; padding: 1.25rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
-            <h2 style="font-size: 1.25rem; font-weight: 700; margin-top: 0;">Applied in URL Shortener Case Study</h2>
-            <p style="color: #444; line-height: 1.6;">${escapeHtml(context.chapterRole)}</p>
-            <div style="margin-top: 0.75rem;">
-              <a href="/archetypes/url-shortener" style="color: #000; text-decoration: underline; font-weight: 600;">Explore in URL Shortener Lesson &rarr;</a>
-            </div>
+        ${appliedIn.length > 0 ? `
+          <section style="margin-top: 2rem;">
+            <h2 style="font-size: 1.35rem; font-weight: 700;">Applied in Archetypes</h2>
+            ${appliedIn.map(({ metadata: chapterMeta, entry }) => `
+              <article style="margin-top: 1rem; padding: 1.25rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">${escapeHtml(chapterMeta.title)}</h3>
+                <p style="color: #444; line-height: 1.6; margin: 0.5rem 0 0 0;">${escapeHtml(entry.chapterRole)}</p>
+                ${entry.specificConsiderations.length > 0 ? `
+                  <ul style="padding-left: 1.25rem; margin: 0.75rem 0 0 0; color: #555; line-height: 1.6; font-size: 0.95rem;">
+                    ${entry.specificConsiderations.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+                  </ul>
+                ` : ''}
+                ${entry.exampleData ? `
+                  <pre style="margin: 0.75rem 0 0 0; padding: 0.75rem; background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; overflow-x: auto; white-space: pre-wrap;">${escapeHtml(entry.exampleData)}</pre>
+                ` : ''}
+                <div style="margin-top: 0.75rem;">
+                  <a href="/archetypes/${chapterMeta.id}" style="color: #000; text-decoration: underline; font-weight: 600;">Explore in ${escapeHtml(chapterMeta.title)} Lesson &rarr;</a>
+                </div>
+              </article>
+            `).join('')}
           </section>
         ` : ''}
       </main>
@@ -434,27 +621,30 @@ Sitemap: ${BASE_URL}/sitemap.xml
 `;
 }
 
-export function prerender() {
+export async function prerender() {
   console.log('Starting static prerender and SEO generation...');
 
   if (!fs.existsSync(TEMPLATE_PATH)) {
     throw new Error(`Base template not found at ${TEMPLATE_PATH}. Run vite build first.`);
   }
 
-  const template = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
-  const routes = generateRoutes();
+  const template = resetRootContainer(fs.readFileSync(TEMPLATE_PATH, 'utf-8'));
+  const routes = await generateRoutes();
 
-  let generatedCount = 0;
+  // Build every page before writing any of them. The home route's output is
+  // `dist/index.html`, which is also the template, so writing it first would
+  // leave every later page with the home page's pre-filled #root.
+  const pages = routes.map((route) => ({
+    targetFile: path.join(route.path ? path.join(DIST_DIR, route.path) : DIST_DIR, 'index.html'),
+    html: buildHtml(template, route)
+  }));
 
-  for (const route of routes) {
-    const html = buildHtml(template, route);
-    const targetDir = route.path ? path.join(DIST_DIR, route.path) : DIST_DIR;
-    const targetFile = path.join(targetDir, 'index.html');
-
-    fs.mkdirSync(targetDir, { recursive: true });
-    fs.writeFileSync(targetFile, html, 'utf-8');
-    generatedCount++;
+  for (const page of pages) {
+    fs.mkdirSync(path.dirname(page.targetFile), { recursive: true });
+    fs.writeFileSync(page.targetFile, page.html, 'utf-8');
   }
+
+  const generatedCount = pages.length;
 
   // Generate sitemap.xml
   const sitemap = generateSitemap(routes);
@@ -491,6 +681,3 @@ export function prerender() {
 
   console.log(`Successfully prerendered ${generatedCount} static HTML pages!`);
 }
-
-// Run prerender if executed directly
-prerender();

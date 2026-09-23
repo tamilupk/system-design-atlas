@@ -3,6 +3,7 @@ import { urlShortenerMetadata } from './metadata';
 import { urlShortenerLesson } from './lesson';
 import { urlShortenerDiagrams } from './diagrams';
 import { urlShortenerConceptContext } from './concept-context';
+import { urlShortenerChallenges } from './challenges';
 import { stepComponents } from './steps';
 
 const urlShortenerModule: ArchetypeModule = {
@@ -11,6 +12,7 @@ const urlShortenerModule: ArchetypeModule = {
   diagrams: urlShortenerDiagrams,
   conceptContext: urlShortenerConceptContext,
   stepComponents,
+  challenges: urlShortenerChallenges,
 };
 
 export default urlShortenerModule;

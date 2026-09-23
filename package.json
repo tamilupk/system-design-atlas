@@ -16,14 +16,15 @@
   ],
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -b && vite build && vite-node scripts/prerender.ts",
-    "prerender": "vite-node scripts/prerender.ts",
+    "build": "tsc -b && vite build && vite-node scripts/prerender-cli.ts",
+    "prerender": "vite-node scripts/prerender-cli.ts",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:build": "vitest run --config vitest.build.config.ts"
   },
   "dependencies": {
     "lucide-react": "^0.469.0",
@@ -33,17 +34,23 @@
     "yaml": "^2.7.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
-    "@types/node": "^26.6.2",
+    "@types/node": "^22.20.4",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.2",
     "eslint": "^9.27.0",
     "jsdom": "^26.1.0",
     "typescript": "~5.8.3",
+    "typescript-eslint": "^8.70.1",
     "vite": "^6.3.5",
-    "vitest": "^3.2.1"
+    "vite-node": "^3.2.4",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

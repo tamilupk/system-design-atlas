@@ -1,29 +1,11 @@
 import { useMemo } from 'react';
 import { useProgress } from '@/hooks/useProgress';
 import { archetypeCatalog } from '@/archetypes/catalog';
+import { chapterStepManifests, getStepIds, getStepTitle, isKnownStep } from '@/archetypes/step-manifests';
 import { CurriculumList } from '@/components/curriculum/CurriculumList';
 import { ResumeCard } from '@/components/curriculum/ResumeCard';
 import { getResumeInfo, getChapterProgress } from '@/features/progress/selectors';
 import styles from './HomePage.module.css';
-
-// Lightweight step ID lists for available chapters (no UI components imported)
-const STEP_IDS: Record<string, readonly string[]> = {
-  'url-shortener': ['requirements', 'api-data', 'baseline', 'id-generation', 'cache', 'scaling', 'reliability', 'tradeoffs', 'recap'],
-};
-
-const STEP_TITLES: Record<string, Record<string, string>> = {
-  'url-shortener': {
-    'requirements': 'Requirements & Scale',
-    'api-data': 'API & Data Model',
-    'baseline': 'Baseline Architecture',
-    'id-generation': 'Short-Code Generation',
-    'cache': 'Caching Layer',
-    'scaling': 'Scaling the Service',
-    'reliability': 'Reliability & Failure Modes',
-    'tradeoffs': 'Design Trade-offs',
-    'recap': 'Recap & Interview Prep',
-  },
-};
 
 export function HomePage() {
   const { state } = useProgress();
@@ -34,14 +16,13 @@ export function HomePage() {
     if (!resumeInfo) return null;
     const meta = archetypeCatalog.find(a => a.id === resumeInfo.archetypeId);
     if (!meta || meta.availability !== 'available') return null;
-    const stepIds = STEP_IDS[resumeInfo.archetypeId];
-    if (!stepIds) return null;
+    // Ignore resume targets that no longer exist in the chapter's manifest.
+    if (!isKnownStep(resumeInfo.archetypeId, resumeInfo.stepId)) return null;
+    const stepIds = getStepIds(resumeInfo.archetypeId);
     const progress = getChapterProgress(state, resumeInfo.archetypeId, [...stepIds]);
-    const stepTitles = STEP_TITLES[resumeInfo.archetypeId];
-    const stepTitle = stepTitles?.[resumeInfo.stepId] ?? resumeInfo.stepId;
     return {
       archetypeTitle: meta.title,
-      stepTitle,
+      stepTitle: getStepTitle(resumeInfo.archetypeId, resumeInfo.stepId),
       archetypeId: resumeInfo.archetypeId,
       stepId: resumeInfo.stepId,
       progress: { completed: progress.completed, total: progress.total, percentage: progress.percentage },
@@ -74,7 +55,7 @@ export function HomePage() {
           <CurriculumList
             archetypes={archetypeCatalog}
             progressState={state}
-            stepIds={STEP_IDS}
+            stepManifests={chapterStepManifests}
           />
         </section>
       </div>

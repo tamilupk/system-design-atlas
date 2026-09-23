@@ -4,6 +4,7 @@ import { useProgress } from '@/hooks/useProgress';
 import { archetypeRegistry, isArchetypeAvailable } from '@/archetypes/registry';
 import { getConcept } from '@/concepts/registry';
 import { LessonOutline } from '@/components/lesson/LessonOutline';
+import { LessonProvider } from '@/components/lesson/LessonContext';
 import { ConceptPanel } from '@/components/lesson/ConceptPanel';
 import { NodeSpecPanel } from '@/components/diagrams/NodeSpecPanel';
 import { ArchitectureDiagram } from '@/components/diagrams/ArchitectureDiagram';
@@ -145,14 +146,14 @@ export function LessonPage() {
       e.preventDefault();
       setExplanationWidth(prev => {
         const next = Math.min(maxAllowedWidth, prev + step);
-        try { localStorage.setItem(STORAGE_KEY_EXPLANATION_WIDTH, String(next)); } catch {}
+        try { localStorage.setItem(STORAGE_KEY_EXPLANATION_WIDTH, String(next)); } catch { /* Storage may be unavailable; keep the in-memory width. */ }
         return next;
       });
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       setExplanationWidth(prev => {
         const next = Math.max(MIN_EXPLANATION_WIDTH, prev - step);
-        try { localStorage.setItem(STORAGE_KEY_EXPLANATION_WIDTH, String(next)); } catch {}
+        try { localStorage.setItem(STORAGE_KEY_EXPLANATION_WIDTH, String(next)); } catch { /* Storage may be unavailable; keep the in-memory width. */ }
         return next;
       });
     } else if (e.key === 'Home' || e.key === 'Enter') {
@@ -167,6 +168,7 @@ export function LessonPage() {
   useEffect(() => {
     let mounted = true;
     async function loadModule() {
+      setModule(null);
       if (!archetypeId || !isArchetypeAvailable(archetypeId)) {
         setError('Lesson not found or not yet available.');
         setLoading(false);
@@ -196,10 +198,11 @@ export function LessonPage() {
   }, [archetypeId]);
 
   useEffect(() => {
-    if (module && archetypeId && !stepId) {
+    if (module && module.metadata.id === archetypeId && archetypeId && !stepId) {
       const lastVisited = getLastVisitedStep(state, archetypeId);
       const firstStep = module.lesson.steps[0];
-      const targetStepId = lastVisited || (firstStep ? firstStep.id : '');
+      const targetStepId = module.lesson.steps.some(step => step.id === lastVisited)
+        ? lastVisited : firstStep?.id;
       if (targetStepId) {
         navigate(`/archetypes/${archetypeId}/steps/${targetStepId}`, { replace: true });
       }
@@ -207,10 +210,11 @@ export function LessonPage() {
   }, [module, archetypeId, stepId, navigate, state]);
 
   useEffect(() => {
-    if (archetypeId && stepId) {
+    if (archetypeId && stepId && module?.metadata.id === archetypeId &&
+        module.lesson.steps.some(step => step.id === stepId)) {
       visitStep(archetypeId, stepId);
     }
-  }, [archetypeId, stepId, visitStep]);
+  }, [archetypeId, stepId, visitStep, module]);
 
   useEffect(() => {
     setSelectedNodeId(null);
@@ -474,6 +478,7 @@ export function LessonPage() {
   const isInspectorVisible = inspectorOpen && Boolean(activeConcept || inspectedNode);
 
   return (
+    <LessonProvider archetypeId={archetypeId || module.metadata.id}>
     <div className={styles.page}>
       {/* Main Layout Area */}
       <div className={styles.bodyLayout}>
@@ -529,6 +534,7 @@ export function LessonPage() {
                   onAskAIAboutNode={(cId) => handleAskAIWithConcept(cId)}
                   onClearNodeSelection={() => setSelectedNodeId(null)}
                   activeFlowSequenceId={currentStep.flowSequenceId}
+                  highlightedNodes={currentStep.highlightedNodes}
                 />
               </div>
             </main>
@@ -763,5 +769,6 @@ export function LessonPage() {
         />
       )}
     </div>
+    </LessonProvider>
   );
 }

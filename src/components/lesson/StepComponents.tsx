@@ -90,3 +90,43 @@ interface InlineCodeProps {
 export const InlineCode: React.FC<InlineCodeProps> = ({ children }) => {
   return <code className={styles.inlineCode}>{children}</code>;
 };
+
+interface ParagraphProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export const Paragraph: React.FC<ParagraphProps> = ({ children, className }) => {
+  return <p className={`${styles.paragraph} ${className || ''}`}>{children}</p>;
+};
+
+interface ListProps {
+  children: ReactNode;
+  ordered?: boolean;
+  className?: string;
+}
+
+/** Styled list; use plain `<li>` children. Set `ordered` for a numbered list. */
+export const List: React.FC<ListProps> = ({ children, ordered = false, className }) => {
+  const classes = `${styles.list} ${className || ''}`;
+  return ordered ? <ol className={classes}>{children}</ol> : <ul className={classes}>{children}</ul>;
+};
+
+interface ConceptLinkProps {
+  /** Registered concept ID; must resolve via `getConcept`. */
+  conceptId: string;
+  onConceptClick: (conceptId: string) => void;
+  children: ReactNode;
+}
+
+/**
+ * Inline link that opens the concept panel. Rendered as a button because it triggers an
+ * in-app action rather than navigating.
+ */
+export const ConceptLink: React.FC<ConceptLinkProps> = ({ conceptId, onConceptClick, children }) => {
+  return (
+    <button type="button" className={styles.conceptLink} onClick={() => onConceptClick(conceptId)}>
+      {children}
+    </button>
+  );
+};
