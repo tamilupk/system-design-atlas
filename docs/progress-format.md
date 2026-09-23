@@ -1,61 +1,153 @@
 # Progress Format
 
-This document details how user progress is stored, merged, and validated in System Design Atlas.
+This document details how user progress is stored, validated, migrated, and merged in System Design Atlas. The source of truth is `src/features/progress/` — `types.ts` (schema), `validation.ts` (validation + migration), `reducer.ts` (mutations and merge), `storage.ts` (persistence), `selectors.ts` (derived values).
 
 ## Storage
-Progress is saved in `localStorage` under the key `sda_progress_v1`.
+
+Progress is saved in `localStorage` under the key `system-design-atlas-progress-v1` (defined in `src/features/progress/storage.ts`). The key name is historical: the `-v1` suffix identifies the storage slot, while the document inside carries its own `schemaVersion` (currently `2`).
+
+`ProgressProvider` writes the full state on every change and listens for the `storage` event to sync other tabs. When `localStorage` is unavailable (private mode, quota, SSR), `isStorageAvailable()` returns false, the app runs in-memory, and `storageAvailable: false` is exposed so the UI can warn the user.
 
 ## Schema
 
 ```typescript
-type ProgressState = {
-  version: 1;
-  lastUpdated: number; // Unix timestamp
-  chapters: Record<string, ChapterProgress>;
-};
+interface ProgressState {
+  readonly app: 'system-design-atlas';   // Fixed discriminator; rejects foreign documents
+  readonly schemaVersion: 1 | 2;         // 1 is accepted on read and migrated to 2
+  readonly exportedAt?: string;          // ISO timestamp, set on YAML export
+  readonly preferences: Preferences;
+  readonly lastVisited: LastVisited | null;
+  readonly archetypes: Record<string, ArchetypeProgress>;
+  readonly challenges?: Record<string, ChallengeProgress>;
+  readonly decisionJournal?: readonly DecisionJournalEntry[];
+  readonly notes?: UserNotes;
+}
 
-type ChapterProgress = {
-  status: 'not_started' | 'in_progress' | 'completed';
-  completedSteps: string[]; // Stable step IDs
-  lastAccessed: number;     // Unix timestamp
-  firstStarted: number;     // Unix timestamp
-};
+interface Preferences {
+  readonly chatProvider: 'chatgpt' | 'claude' | 'gemini';
+  readonly focusMode: boolean;
+}
+
+interface LastVisited {
+  readonly archetypeId: string;
+  readonly stepId: string;
+  readonly visitedAt: string;            // ISO timestamp
+}
+
+interface ArchetypeProgress {
+  readonly lastStepId: string;
+  readonly updatedAt: string;            // ISO timestamp
+  readonly steps: Record<string, StepProgress>;
+}
+
+interface StepProgress {
+  readonly visitedAt: string | null;
+  readonly completedAt: string | null;   // null = visited but not completed
+}
+
+interface ChallengeProgress {
+  readonly challengeId: string;
+  readonly attemptedAt: string;
+  readonly completedAt: string | null;
+  readonly selectedOptionId: string | null;
+  readonly demonstratedUnderstanding: boolean;
+  readonly notesDraft?: string;
+}
+
+interface DecisionJournalEntry {
+  readonly id: string;
+  readonly timestamp: string;
+  readonly stepId: string;
+  readonly title: string;
+  readonly decision: string;
+  readonly rationale: string;
+  readonly consequences: string;
+}
+
+interface UserNotes {
+  readonly archetypes: Record<string, string>;                 // chapter-scoped notes
+  readonly steps: Record<string, Record<string, string>>;      // archetypeId → stepId → note
+}
 ```
+
+**There is no stored `status` and no `completedSteps[]` array.** Completion is a per-step `completedAt` timestamp, and every aggregate (chapter percentage, overall counts, resume point) is derived on demand by `selectors.ts` against the current lesson definition. This means unknown or removed step IDs are preserved in storage but never count toward completion.
 
 ## Validation Rules
 
-When loading progress from storage or importing from a file, the app must validate:
-1. `version` must be a known number (currently `1`).
-2. `chapters` must be a valid object mapping string IDs to valid `ChapterProgress` objects.
-3. Steps in `completedSteps` must be strings. Unknown step IDs should be preserved (in case of downgrades or removed steps), but they should not count towards chapter completion percentage.
+`validateProgressState(data)` returns `{ valid: true, state }` or `{ valid: false, error }`. A document is rejected when:
 
-## Synchronization & Merge Behavior
+1. It is not a plain object, or `app !== 'system-design-atlas'`.
+2. `schemaVersion` is neither `1` nor `2`.
+3. `exportedAt` is present but not a parseable timestamp.
+4. `preferences` is missing, `chatProvider` is not one of the three known providers, or `focusMode` is not a boolean.
+5. `lastVisited` is neither `null` nor an object with string `archetypeId`/`stepId` and a valid `visitedAt`.
+6. `archetypes` is not an object, or any entry has a non-string `lastStepId`, an invalid `updatedAt`, a non-object `steps`, or a step with invalid `visitedAt`/`completedAt`.
+7. `notes` (or its `archetypes`/`steps` sub-objects) is malformed, or any note value is not a string.
 
-When handling multiple sources of progress (e.g., cross-tab sync or importing an existing file), progress is merged:
-- **Union Steps**: `completedSteps` becomes a unique array of steps from both sources.
-- **Timestamps**:
-  - `firstStarted`: The earliest timestamp wins.
-  - `lastAccessed`: The most recent timestamp wins.
-  - `lastUpdated`: The most recent timestamp wins.
-- **Status**: Computed dynamically based on the union of `completedSteps` against the current chapter definition, rather than blindly copying the string.
+Timestamps are validated leniently: `null` is always allowed, and any string that `new Date(...)` can parse is accepted.
 
-### Replace Behavior
-
-If the user explicitly chooses to "overwrite" progress during import, the loaded YAML completely replaces the local state. No merging occurs.
-
-## Cross-Tab Behavior
-
-The app uses a `storage` event listener. When `localStorage` changes in another tab, the current tab receives the new state and updates its React context. We use a "last-write-wins" approach for the overall document, but ideally, since we have distinct chapter keys, only the modified chapter needs updating. In simple implementations, replacing the in-memory state with the new JSON from storage is sufficient.
-
-## Round-Trip Behavior
-
-Exporting the local progress to a YAML file, and then immediately importing that same YAML file with the "merge" strategy, should result in a `ProgressState` object identical to the original one (idempotent).
+**Prototype-pollution guard:** archetype IDs, step IDs, and note keys are rejected outright if they equal `__proto__` or `constructor`. This runs before any object is spread into state.
 
 ## Migration Policy
 
-If the schema changes in the future, the `version` must be incremented.
-A migration function must be provided to convert `version: 1` data into `version: 2` data during load.
+Migration happens inside the validator, not as a separate pass. Once a document validates, it is normalized to `schemaVersion: 2` and the optional collections are filled with safe defaults:
+
+```typescript
+{
+  ...data,
+  schemaVersion: 2,
+  challenges: isObject(data.challenges) ? data.challenges : {},
+  decisionJournal: Array.isArray(data.decisionJournal) ? data.decisionJournal : [],
+  notes: { archetypes: {...} | {}, steps: {...} | {} },
+}
+```
+
+So a `schemaVersion: 1` document (which predates challenges, the decision journal, and notes) loads cleanly and is written back as version 2 on the next save. `migrateProgress()` in `migrations.ts` is the public wrapper: it returns the migrated state or `null` when validation fails. When a future version 3 is introduced, add the conversion logic there and extend the `schemaVersion` union in `types.ts` — never drop support for reading an older version without a migration path.
+
+## Synchronization & Merge Behavior
+
+Merging is used for cross-tab sync and for the "merge" option during YAML import. It is dispatched as `MERGE_STATE` and handled in `reducer.ts`. The rules are deliberately asymmetric — timestamps that record *when learning happened* keep the earliest value, while pointers to *where the user is now* keep the latest:
+
+| Field | Rule |
+|---|---|
+| `archetypes[id]` (new) | Taken wholesale from the imported document |
+| `steps[stepId].visitedAt` | **Earliest** non-null wins |
+| `steps[stepId].completedAt` | **Earliest** non-null wins |
+| `archetypes[id].updatedAt` | **Latest** wins |
+| `archetypes[id].lastStepId` | Follows whichever `updatedAt` won |
+| `lastVisited` | **Latest** `visitedAt` wins |
+| `challenges[id].attemptedAt` | **Earliest** wins |
+| `challenges[id].demonstratedUnderstanding` | Logical **OR** of both |
+| `challenges[id].completedAt` | Current value if set, else the imported one |
+| `challenges[id].notesDraft` | Current value if set, else the imported one |
+| `decisionJournal` | **Union by `id`**; existing entries win on conflict |
+| `notes` (chapter and step) | See below |
+
+**Note merging:** if the local note is absent or blank, the imported note is adopted. If both exist and differ, they are concatenated with a `\n\n---\n\n` separator so neither version is silently lost. Identical notes are left untouched.
+
+`preferences` are **not** merged — the local document's preferences always win, since they describe this device's UI rather than learning history.
+
+### Replace Behavior
+
+If the user explicitly chooses to overwrite during import, `REPLACE_STATE` swaps in the imported document wholesale. No merging occurs. `RESET` restores `initialState`.
+
+## Export & Import
+
+`yaml-transfer.ts` handles the YAML round-trip:
+
+- `exportToYaml(state)` stamps `exportedAt` with the current ISO time and stringifies the whole document. The `yaml` package is dynamically imported so it stays out of the initial bundle.
+- `importFromYaml(content, availableArchetypes)` rejects files over **1 MB**, parses with `maxAliasCount: 10` to blunt YAML alias bombs, then runs the same validator as storage reads — so an imported document is migrated and normalized exactly like a stored one.
+- On success it returns an `ImportSummary` listing known vs. unknown archetype IDs and the total completed-step count. The toolbar shows this preview before the user commits to merge or replace.
+- Unknown archetype IDs are reported but **not stripped**: the merged state keeps them, so importing a file from a newer build does not destroy progress for chapters this build has not registered yet.
+
+## Cross-Tab Behavior
+
+`ProgressProvider` registers a `storage` listener. When another tab writes the progress key, this tab parses and validates `e.newValue` and dispatches `REPLACE_STATE` with the result — last-write-wins at the document level. Invalid payloads are logged and ignored, leaving the current state untouched. Because both tabs write the complete document, an in-flight local edit can be overwritten; the merge path exists for imports rather than for concurrent tabs.
+
+## Round-Trip Behavior
+
+Exporting progress to YAML and immediately re-importing it with the merge strategy must be idempotent: earliest/latest selection over identical values is a no-op, journal union by `id` adds nothing, and identical notes are not concatenated. `exportedAt` is the only field expected to differ.
 
 ## Recovery from Corruption
 
-If `localStorage` contains unparseable JSON or invalid schema structures that cannot be migrated, the application will fallback to a completely fresh state (as if the user had no progress). It may present a generic warning or console error, but it must not crash the application.
+If `localStorage` holds unparseable JSON or a document that fails validation, `loadProgress()` logs a warning and returns `null`, and the app starts from `initialState`. The application must never crash because of bad stored data, and must never write an unvalidated document back over data it could not read.

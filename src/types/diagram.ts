@@ -1,5 +1,14 @@
 export type DiagramNodeRole = 'client' | 'service' | 'database' | 'cache' | 'loadbalancer' | 'queue' | 'external';
 
+export interface NodeSpecification {
+  readonly responsibilities: readonly string[];
+  readonly inputsAndProtocols: readonly string[];
+  readonly outputsAndCodes: readonly string[];
+  readonly stateAndPersistence: string;
+  readonly failureModes: readonly string[];
+  readonly tradeoffs: readonly string[];
+}
+
 export interface DiagramNode {
   readonly id: string;
   readonly label: string;
@@ -8,6 +17,7 @@ export interface DiagramNode {
   readonly y: number;
   readonly conceptId?: string;
   readonly description?: string;
+  readonly spec?: NodeSpecification;
 }
 
 export interface DiagramEdge {
@@ -16,6 +26,7 @@ export interface DiagramEdge {
   readonly to: string;
   readonly label?: string;
   readonly style?: 'solid' | 'dashed';
+  readonly labelPosition?: number;
 }
 
 export interface FlowEvent {

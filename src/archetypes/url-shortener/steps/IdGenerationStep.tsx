@@ -2,20 +2,19 @@ import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
 import { TradeoffTable } from '@/components/lesson/TradeoffTable';
 import { CodeBlock } from '@/components/lesson/CodeBlock';
+import { DecisionChallenge } from '@/components/challenge/DecisionChallenge';
+import { urlShortenerChallenges } from '../challenges';
 import styles from './StepContent.module.css';
 
-export const IdGenerationStep: FC<StepComponentProps> = ({ onConceptClick }) => {
+export const IdGenerationStep: FC<StepComponentProps> = () => {
   return (
     <div className={styles.content}>
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Generating the Short Code</h3>
         <p className={styles.paragraph}>
-          The core technical challenge of a URL shortener is reliably generating unique, short strings. 
-          The most common character set used is Base62 (A-Z, a-z, 0-9), giving us 62 characters to work with.
-          A 7-character Base62 string allows for 62<sup>7</sup> ≈ 3.5 trillion combinations.
-        </p>
-        <p className={styles.paragraph}>
-          There are two primary approaches to generating these IDs:
+          The core technical challenge of a URL shortener is reliably generating unique, compact strings.
+          The standard Base62 alphabet is <code className={styles.inlineCode}>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz</code> (digits 0–9, uppercase A–Z, lowercase a–z).
+          A 7-character Base62 string provides 62<sup>7</sup> ≈ 3.52 trillion unique combinations, accommodating billions of URLs with negligible collision risk.
         </p>
       </div>
 
@@ -24,46 +23,59 @@ export const IdGenerationStep: FC<StepComponentProps> = ({ onConceptClick }) => 
           title="ID Generation Strategies"
           items={[
             {
-              aspect: 'Random Generation',
-              pros: 'Unpredictable codes (harder to scrape); simple to implement without extra infrastructure',
-              cons: 'Collision probability increases over time; requires retry logic on unique constraint violation'
+              aspect: 'Random Generation (e.g. 7 random chars)',
+              pros: 'Unpredictable and un-enumerable (resists link enumeration attacks); stateless generation on app servers',
+              cons: 'Collision rate rises as keyspace fills (Birthday paradox); requires unique index & retry loop on insert'
             },
             {
-              aspect: 'Sequential ID Encoding',
-              pros: 'Zero collisions by design; deterministic and highly performant',
-              cons: 'Predictable and enumerable codes; requires centralized counter or distributed ID generator'
+              aspect: 'Sequential ID + Base62 Encoding',
+              pros: 'Zero collisions by design; strictly deterministic; optimal B-Tree index insertion locality',
+              cons: 'Predictable sequence allows competitor scraping; requires centralized range server or 64-bit Snowflake IDs'
             }
           ]}
         />
       </div>
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>How Base62 Encoding Works</h3>
+        <h3 className={styles.sectionTitle}>Tested Base62 Encoding</h3>
         <p className={styles.paragraph}>
-          If we use the Sequential ID approach (e.g., an auto-incrementing database ID or a distributed Snowflake ID), 
-          we simply convert that base-10 number into a base-62 string.
+          When converting 64-bit integer IDs (from a database sequence, counter range, or Snowflake generator) into Base62 using the standard alphabet:
         </p>
         <CodeBlock
           language="text"
-          code={`ID 125      -> Base62 "2B"
-ID 1000000  -> Base62 "4C92"
-ID 35000000 -> Base62 "2fXb8"`}
+          code={`Alphabet: 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+
+ID 125        -> Base62 "21"     (125 = 2 × 62 + 1)
+ID 1,000,000   -> Base62 "4C92"   (4 × 62³ + 12 × 62² + 9 × 62 + 2)
+ID 35,000,000  -> Base62 "2Mr68"  (2 × 62⁴ + 22 × 62³ + 53 × 62² + 6 × 62 + 8)`}
         />
       </div>
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Handling Random Collisions</h3>
+        <h3 className={styles.sectionTitle}>Separating Collisions, Idempotency, and Conflicts</h3>
         <p className={styles.paragraph}>
-          If we choose Random Generation, we must handle the rare chance that we generate a code that already exists. 
-          When we attempt to insert into the database, the unique index will throw an error. 
-          We handle this by catching the error and retrying with a new code—a pattern closely related to{' '}
-          <button 
-            className={styles.conceptLink} 
-            onClick={() => onConceptClick('idempotency')}
-          >
-            idempotency
-          </button> in distributed systems.
+          Senior system design requires distinguishing three distinct collision scenarios that junior engineers often conflate:
         </p>
+        <ul className={styles.list}>
+          <li>
+            <strong>1. Random Code Collisions:</strong> Occur when the random generator picks an already-used string. 
+            Because the database enforces a <code className={styles.inlineCode}>UNIQUE</code> constraint on <code className={styles.inlineCode}>short_code</code>, the insert aborts. 
+            The app server catches this constraint violation and immediately retries with a fresh random code (up to 3 attempts).
+          </li>
+          <li>
+            <strong>2. Request Idempotency:</strong> If a client sends a create request and the network drops before receiving the 201 response, the client retries. 
+            To prevent creating multiple duplicate short codes for the same request, clients include an <code className={styles.inlineCode}>Idempotency-Key</code> header. 
+            The server checks an idempotency store to return the previously created record.
+          </li>
+          <li>
+            <strong>3. Custom-Alias Conflicts:</strong> When a user explicitly requests an alias like <code className={styles.inlineCode}>"my-link"</code>, any collision is <em>deterministic and intentional</em>. 
+            The server must <strong>never</strong> silently retry with a random code; it must immediately return an HTTP <code className={styles.inlineCode}>409 Conflict</code> so the user can choose another alias.
+          </li>
+        </ul>
+      </div>
+
+      <div className={styles.section}>
+        <DecisionChallenge challenge={urlShortenerChallenges['id-generation-strategy']!} />
       </div>
     </div>
   );

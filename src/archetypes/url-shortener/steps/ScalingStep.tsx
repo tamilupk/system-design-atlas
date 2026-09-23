@@ -1,5 +1,7 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
+import { DecisionChallenge } from '@/components/challenge/DecisionChallenge';
+import { urlShortenerChallenges } from '../challenges';
 import styles from './StepContent.module.css';
 
 export const ScalingStep: FC<StepComponentProps> = ({ onConceptClick }) => {
@@ -48,6 +50,10 @@ export const ScalingStep: FC<StepComponentProps> = ({ onConceptClick }) => {
             <p className={styles.secondaryText}>Database Read Replicas, Multi-AZ deployment, automated scaling groups.</p>
           </div>
         </div>
+      </div>
+
+      <div className={styles.section}>
+        <DecisionChallenge challenge={urlShortenerChallenges['rate-limiting-placement']!} />
       </div>
     </div>
   );

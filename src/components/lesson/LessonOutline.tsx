@@ -9,6 +9,7 @@ interface LessonOutlineProps {
   currentStepId: string;
   progressState: ProgressState;
   archetypeId: string;
+  showHeader?: boolean;
   onStepClick: (stepId: string) => void;
 }
 
@@ -17,6 +18,7 @@ export const LessonOutline: React.FC<LessonOutlineProps> = ({
   currentStepId,
   progressState,
   archetypeId,
+  showHeader = true,
   onStepClick
 }) => {
   const steps = lesson.steps;
@@ -26,9 +28,11 @@ export const LessonOutline: React.FC<LessonOutlineProps> = ({
 
   return (
     <nav className={styles.outline} role="navigation" aria-label="Chapter outline">
-      <div className={styles.header}>
-        <h3 className={styles.title}>{lesson.title}</h3>
-      </div>
+      {showHeader && (
+        <div className={styles.header}>
+          <h3 className={styles.title}>{lesson.title}</h3>
+        </div>
+      )}
       
       <ol className={styles.stepList}>
         {steps.map((step, index) => {

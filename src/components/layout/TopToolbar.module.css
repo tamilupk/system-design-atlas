@@ -1,53 +1,284 @@
 .toolbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   height: var(--toolbar-height);
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-4);
   background-color: var(--color-surface);
   border-bottom: var(--border-width) solid var(--color-border);
-  z-index: 100;
+  z-index: 50;
+  gap: var(--space-3);
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .brand {
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   text-decoration: none;
-  letter-spacing: -0.01em;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition-fast);
 }
 
+.brand:hover {
+  opacity: 0.85;
+}
+
+.brand:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
+
+.logoImage {
+  height: 38px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.sidebarToggle {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.sidebarToggle:hover {
+  color: var(--color-text-primary);
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-xs);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: 2px;
+}
+
+.breadcrumbLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.breadcrumbLink:hover {
+  color: var(--color-text-primary);
+}
+
+.breadcrumbSeparator {
+  color: var(--color-text-tertiary, #94A3B8);
+  flex-shrink: 0;
+}
+
+.breadcrumbCurrent {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Center Section: Decoupled Step Navigation & Expandable Mark Complete */
+.centerSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stepNavGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepNav {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 2px 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.stepNavBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 24px;
+}
+
+.stepNavBtn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-action-secondary-hover);
+}
+
+.stepNavBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepCounter {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-primary);
+  padding: 0 6px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Expandable Mark Complete Button: Default circular icon pill, expands label on hover */
+.markCompleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              padding 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast),
+              box-shadow var(--transition-fast);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.markCompleteIcon {
+  flex-shrink: 0;
+}
+
+.markCompleteText {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-left: 0;
+  font-size: 12px;
+  font-weight: 600;
+  transition: max-width 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 160ms ease,
+              margin-left 220ms ease;
+  white-space: nowrap;
+}
+
+.markCompleteBtn:hover,
+.markCompleteBtn:focus-visible {
+  width: auto;
+  padding: 0 10px;
+  background-color: var(--color-action-secondary-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.markCompleteBtn:hover .markCompleteText,
+.markCompleteBtn:focus-visible .markCompleteText {
+  max-width: 120px;
+  opacity: 1;
+  margin-left: 5px;
+}
+
+.markCompleteBtnActive {
+  background-color: #ECFDF5;
+  color: #059669;
+  border-color: #A7F3D0;
+}
+
+.markCompleteBtnActive:hover,
+.markCompleteBtnActive:focus-visible {
+  background-color: #D1FAE5;
+  color: #047857;
+  border-color: #6EE7B7;
+}
+
+/* Actions Right */
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.actionIconBtn {
+  color: var(--color-text-secondary);
+  position: relative;
+}
+
+.actionIconBtnActive {
+  color: var(--color-primary);
+}
+
+.actionIconBtnActive::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+}
+
+.inspectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .menuWrapper {
   position: relative;
 }
 
-.menuButton {
-  display: flex;
+.iconMenuButton {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast);
-  min-height: var(--touch-target);
-  border: none;
-  background: transparent;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
   cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
 }
 
-.menuButton:hover {
+.iconMenuButton:hover,
+.iconMenuButton:focus-visible {
   background-color: var(--color-action-secondary-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
 }
 
 .dropdown {
@@ -93,20 +324,27 @@
   display: none;
 }
 
-@media (max-width: 640px) {
-  .toolbar {
-    padding: 0 var(--space-4);
-  }
-  .brandFull {
+@media (max-width: 1024px) {
+  .breadcrumbs {
     display: none;
-  }
-  .brandShort {
-    display: inline;
   }
 }
 
-@media (min-width: 641px) {
-  .brandShort {
+@media (max-width: 640px) {
+  .toolbar {
+    padding: 0 var(--space-2);
+    gap: 4px;
+  }
+
+  .logoImage {
+    height: 30px;
+  }
+
+  .stepNavBtn span {
     display: none;
+  }
+
+  .stepNavBtn {
+    padding: 3px 5px;
   }
 }

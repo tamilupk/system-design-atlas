@@ -34,6 +34,38 @@ export function useProgress() {
     dispatch({ type: 'RESET' });
   }, [dispatch]);
 
+  const saveChallengeAttempt = useCallback((
+    challengeId: string,
+    selectedOptionId: string,
+    demonstratedUnderstanding: boolean,
+    notesDraft?: string
+  ) => {
+    dispatch({
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      challengeId,
+      selectedOptionId,
+      demonstratedUnderstanding,
+      notesDraft,
+      timestamp: new Date().toISOString(),
+    });
+  }, [dispatch]);
+
+  const setArchetypeNote = useCallback((archetypeId: string, note: string) => {
+    dispatch({ type: 'SET_ARCHETYPE_NOTE', archetypeId, note });
+  }, [dispatch]);
+
+  const setStepNote = useCallback((archetypeId: string, stepId: string, note: string) => {
+    dispatch({ type: 'SET_STEP_NOTE', archetypeId, stepId, note });
+  }, [dispatch]);
+
+  const getArchetypeNote = useCallback((archetypeId: string): string => {
+    return state.notes?.archetypes?.[archetypeId] || '';
+  }, [state.notes]);
+
+  const getStepNote = useCallback((archetypeId: string, stepId: string): string => {
+    return state.notes?.steps?.[archetypeId]?.[stepId] || '';
+  }, [state.notes]);
+
   return {
     state,
     dispatch,
@@ -44,5 +76,10 @@ export function useProgress() {
     setChatProvider,
     setFocusMode,
     resetProgress,
+    saveChallengeAttempt,
+    setArchetypeNote,
+    setStepNote,
+    getArchetypeNote,
+    getStepNote,
   };
 }

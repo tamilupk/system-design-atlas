@@ -42,6 +42,7 @@
   color: var(--color-text-secondary);
   font-weight: 600;
   font-size: 1.125rem;
+  flex-shrink: 0;
 }
 
 .info {
@@ -155,35 +156,46 @@
   text-align: right;
 }
 
-.action button {
-  display: flex;
+.badgeGroup {
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  flex-shrink: 0;
+}
+
+.action a,
+.action button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.125rem;
   border-radius: var(--radius-md);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
   border: none;
+  text-decoration: none;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .buttonStart {
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--color-action-primary, #171717);
+  color: var(--color-action-primary-text, #ffffff) !important;
 }
 
 .buttonStart:hover {
-  background-color: var(--color-primary-dark);
+  background-color: var(--color-action-primary-hover, #2e2e2e);
 }
 
 .buttonResume {
-  background-color: var(--color-secondary);
-  color: white;
+  background-color: var(--color-action-primary, #171717);
+  color: var(--color-action-primary-text, #ffffff) !important;
 }
 
 .buttonResume:hover {
-  background-color: var(--color-secondary-dark);
+  background-color: var(--color-action-primary-hover, #2e2e2e);
 }
 
 .buttonReview {

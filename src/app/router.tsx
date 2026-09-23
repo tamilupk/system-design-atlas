@@ -1,9 +1,10 @@
-import { createHashRouter, Outlet } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { createBrowserRouter, Outlet, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 
 const HomePage = lazy(() => import('@/pages/HomePage').then(m => ({ default: m.HomePage })));
 const LessonPage = lazy(() => import('@/pages/LessonPage').then(m => ({ default: m.LessonPage })));
+const ConceptPage = lazy(() => import('@/pages/ConceptPage').then(m => ({ default: m.ConceptPage })));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 function Loading() {
@@ -22,6 +23,15 @@ function Loading() {
 }
 
 function RootLayout() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash.startsWith('#/')) {
+      const target = window.location.hash.slice(1);
+      navigate(target, { replace: true });
+    }
+  }, [navigate]);
+
   return (
     <AppShell>
       <Suspense fallback={<Loading />}>
@@ -31,7 +41,7 @@ function RootLayout() {
   );
 }
 
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
@@ -46,6 +56,10 @@ export const router = createHashRouter([
       {
         path: '/archetypes/:archetypeId/steps/:stepId',
         element: <LessonPage />,
+      },
+      {
+        path: '/concepts/:conceptId',
+        element: <ConceptPage />,
       },
       {
         path: '*',

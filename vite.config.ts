@@ -17,6 +17,24 @@ export default defineConfig({
   build: {
     target: 'es2022',
   },
+  server: {
+    host: true,
+    port: 5173,
+    allowedHosts: [
+      'systemdesign.tamilarasu.dev',
+      '.tamilarasu.dev',
+      'localhost',
+    ],
+  },
+  preview: {
+    host: true,
+    port: 5173,
+    allowedHosts: [
+      'systemdesign.tamilarasu.dev',
+      '.tamilarasu.dev',
+      'localhost',
+    ],
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -23,23 +23,181 @@ const ROLE_COLORS: Record<DiagramNodeRole, { bg: string; border: string; text: s
 const renderIcon = (role: DiagramNodeRole, color: string) => {
   switch (role) {
     case 'client':
-      return <rect x="-10" y="-12" width="20" height="16" rx="2" fill="none" stroke={color} strokeWidth="2" />;
+      return (
+        <g>
+          {/* Client Workstation Display */}
+          <rect
+            x="-11"
+            y="-13"
+            width="22"
+            height="14"
+            rx="2"
+            fill={color}
+            fillOpacity="0.08"
+            stroke={color}
+            strokeWidth="1.75"
+          />
+          {/* Browser / Terminal line accent */}
+          <line
+            x1="-7"
+            y1="-6.5"
+            x2="7"
+            y2="-6.5"
+            stroke={color}
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            opacity="0.45"
+          />
+          {/* Stand neck & base */}
+          <line x1="0" y1="1" x2="0" y2="4.5" stroke={color} strokeWidth="1.75" strokeLinecap="round" />
+          <line x1="-6" y1="4.5" x2="6" y2="4.5" stroke={color} strokeWidth="1.75" strokeLinecap="round" />
+        </g>
+      );
+
     case 'service':
-      return <circle cx="0" cy="-4" r="8" fill="none" stroke={color} strokeWidth="2" />;
+      return (
+        <g>
+          {/* Top Server Blade */}
+          <rect
+            x="-11"
+            y="-11"
+            width="22"
+            height="8"
+            rx="2"
+            fill={color}
+            fillOpacity="0.08"
+            stroke={color}
+            strokeWidth="1.75"
+          />
+          <circle cx="-7" cy="-7" r="1.2" fill={color} />
+          <line x1="-3" y1="-7" x2="2" y2="-7" stroke={color} strokeWidth="1.25" strokeLinecap="round" opacity="0.6" />
+          <line x1="4.5" y1="-7" x2="7.5" y2="-7" stroke={color} strokeWidth="1.25" strokeLinecap="round" opacity="0.6" />
+
+          {/* Bottom Server Blade */}
+          <rect
+            x="-11"
+            y="-1"
+            width="22"
+            height="8"
+            rx="2"
+            fill={color}
+            fillOpacity="0.08"
+            stroke={color}
+            strokeWidth="1.75"
+          />
+          <circle cx="-7" cy="3" r="1.2" fill={color} />
+          <line x1="-3" y1="3" x2="2" y2="3" stroke={color} strokeWidth="1.25" strokeLinecap="round" opacity="0.6" />
+          <line x1="4.5" y1="3" x2="7.5" y2="3" stroke={color} strokeWidth="1.25" strokeLinecap="round" opacity="0.6" />
+        </g>
+      );
+
     case 'database':
       return (
-        <path d="M-8,-8 C-8,-12 8,-12 8,-8 L8,0 C8,4 -8,4 -8,0 Z M-8,-8 C-8,-4 8,-4 8,-8" fill="none" stroke={color} strokeWidth="2" />
+        <g>
+          {/* Top Cylinder Cap */}
+          <ellipse
+            cx="0"
+            cy="-8"
+            rx="9.5"
+            ry="3.2"
+            fill={color}
+            fillOpacity="0.12"
+            stroke={color}
+            strokeWidth="1.75"
+          />
+          {/* Cylinder Walls & Bottom Cap */}
+          <path
+            d="M -9.5 -8 V 8 A 9.5 3.2 0 0 0 9.5 8 V -8"
+            fill="none"
+            stroke={color}
+            strokeWidth="1.75"
+            strokeLinejoin="round"
+          />
+          {/* Tier 1 Disk Platter Divider */}
+          <path
+            d="M -9.5 -3 A 9.5 3.2 0 0 0 9.5 -3"
+            fill="none"
+            stroke={color}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          {/* Tier 2 Disk Platter Divider */}
+          <path
+            d="M -9.5 2.5 A 9.5 3.2 0 0 0 9.5 2.5"
+            fill="none"
+            stroke={color}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </g>
       );
+
     case 'cache':
-      return <path d="M2,-12 L-6,0 L0,0 L-2,12 L6,0 L0,0 Z" fill="none" stroke={color} strokeWidth="2" />;
+      return (
+        <path
+          d="M1,-13 L-7,-1 L-1,-1 L-3,11 L7,-1 L1,-1 Z"
+          fill={color}
+          fillOpacity="0.14"
+          stroke={color}
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      );
+
     case 'loadbalancer':
-      return <path d="M0,-10 L0,2 M0,2 L-6,8 M0,2 L6,8 M-8,-6 L8,-6" fill="none" stroke={color} strokeWidth="2" />;
+      return (
+        <g>
+          {/* Ingress Line & Hub */}
+          <line x1="0" y1="-12" x2="0" y2="-5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+          <circle cx="0" cy="-4" r="2.2" fill={color} />
+          {/* Balanced Egress Branches */}
+          <path d="M-2,-2 C-6,1 -8,4 -8,8" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" />
+          <path d="M-10.5,5.5 L-8,8.5 L-5.5,5.5" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <line x1="0" y1="-2" x2="0" y2="8.5" stroke={color} strokeWidth="1.75" strokeLinecap="round" />
+          <path d="M-2.5,6 L0,8.5 L2.5,6" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M2,-2 C6,1 8,4 8,8" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" />
+          <path d="M5.5,5.5 L8,8.5 L10.5,5.5" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      );
+
     case 'queue':
-      return <path d="M-8,-10 L8,-10 M-8,-4 L8,-4 M-8,2 L8,2" fill="none" stroke={color} strokeWidth="2" />;
+      return (
+        <g>
+          <rect
+            x="-11"
+            y="-6"
+            width="22"
+            height="12"
+            rx="2"
+            fill={color}
+            fillOpacity="0.08"
+            stroke={color}
+            strokeWidth="1.75"
+          />
+          <line x1="-3.5" y1="-6" x2="-3.5" y2="6" stroke={color} strokeWidth="1.2" strokeDasharray="1.5 2" opacity="0.6" />
+          <line x1="4" y1="-6" x2="4" y2="6" stroke={color} strokeWidth="1.2" strokeDasharray="1.5 2" opacity="0.6" />
+          <circle cx="-7.5" cy="0" r="1.5" fill={color} />
+          <circle cx="0.25" cy="0" r="1.5" fill={color} />
+          <circle cx="7.5" cy="0" r="1.5" fill={color} />
+        </g>
+      );
+
     case 'external':
-      return <path d="M-6,0 C-10,0 -10,-6 -6,-6 C-6,-10 2,-10 4,-6 C8,-6 8,0 4,0 Z" fill="none" stroke={color} strokeWidth="2" />;
+      return (
+        <path
+          d="M-6,2 C-10,2 -10,-4 -6,-4 C-6,-8.5 2,-8.5 4.5,-4 C8.5,-4 8.5,2 4.5,2 Z"
+          fill={color}
+          fillOpacity="0.08"
+          stroke={color}
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      );
+
     default:
-      return <rect x="-6" y="-8" width="12" height="12" fill="none" stroke={color} strokeWidth="2" />;
+      return <rect x="-6" y="-8" width="12" height="12" rx="2" fill="none" stroke={color} strokeWidth="1.75" />;
   }
 };
 
@@ -65,6 +223,7 @@ export const DiagramNode: React.FC<DiagramNodeProps> = ({
     <g
       className={`${styles.node} ${selected ? styles.selected : ''} ${highlighted ? styles.highlighted : ''} ${dimmed ? styles.dimmed : ''}`}
       transform={`translate(${node.x}, ${node.y})`}
+      data-node-id={node.id}
       onClick={() => onClick(node.id)}
       onKeyDown={handleKeyDown}
       role="button"

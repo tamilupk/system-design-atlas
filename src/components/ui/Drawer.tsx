@@ -9,6 +9,9 @@ export interface DrawerProps {
   title: string;
   children: ReactNode;
   side?: 'left' | 'right';
+  noPadding?: boolean;
+  hideHeader?: boolean;
+  className?: string;
 }
 
 export const Drawer: FC<DrawerProps> = ({
@@ -17,6 +20,9 @@ export const Drawer: FC<DrawerProps> = ({
   title,
   children,
   side = 'right',
+  noPadding = false,
+  hideHeader = false,
+  className,
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +57,7 @@ export const Drawer: FC<DrawerProps> = ({
   if (!open) return null;
 
   return (
-    <div className={styles.portal}>
+    <div className={`${styles.portal} ${className || ''}`}>
       <div
         ref={overlayRef}
         className={`${styles.overlay} ${open ? styles.open : ''}`}
@@ -66,17 +72,19 @@ export const Drawer: FC<DrawerProps> = ({
         aria-label={title}
         tabIndex={-1}
       >
-        <div className={styles.header}>
-          <h2 className={styles.title}>{title}</h2>
-          <IconButton
-            icon={<X />}
-            label="Close drawer"
-            onClick={onClose}
-            size="sm"
-            className={styles.closeButton}
-          />
-        </div>
-        <div className={styles.content}>{children}</div>
+        {!hideHeader && (
+          <div className={styles.header}>
+            <h2 className={styles.title}>{title}</h2>
+            <IconButton
+              icon={<X />}
+              label="Close drawer"
+              onClick={onClose}
+              size="sm"
+              className={styles.closeButton}
+            />
+          </div>
+        )}
+        <div className={`${styles.content} ${noPadding ? styles.noPadding : ''}`}>{children}</div>
       </div>
     </div>
   );

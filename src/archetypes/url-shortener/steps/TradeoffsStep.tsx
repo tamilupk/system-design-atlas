@@ -1,6 +1,8 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
 import { TradeoffTable } from '@/components/lesson/TradeoffTable';
+import { DecisionChallenge } from '@/components/challenge/DecisionChallenge';
+import { urlShortenerChallenges } from '../challenges';
 import styles from './StepContent.module.css';
 
 export const TradeoffsStep: FC<StepComponentProps> = () => {
@@ -15,31 +17,55 @@ export const TradeoffsStep: FC<StepComponentProps> = () => {
 
       <div className={styles.section}>
         <TradeoffTable
-          title="Redirect and Analytics Trade-offs"
+          title="Redirect Status Codes and Cache Headers"
           items={[
             {
-              aspect: '301 vs 302 Redirects',
-              pros: '301: Browser caches redirect, minimizing server load. 302: Server hit every time, ensuring accurate analytics.',
-              cons: '301: Analytics and click-tracking become inaccurate because server is bypassed. 302: Higher latency and continuous server load.'
+              aspect: '301 / 308 Permanent Redirect',
+              pros: 'Clients and CDNs cache destination indefinitely; eliminates subsequent server round-trips for repeat visitors.',
+              cons: 'Origin cannot reliably revoke/expire links or track repeat clicks once cached in browser. (308 preserves method; 301 rewrites to GET).'
             },
             {
-              aspect: 'Inline vs Async Analytics',
-              pros: 'Inline: Simple synchronous tracking with immediate consistency. Async (Kafka/SQS): Offloads metrics processing from the critical redirect path.',
-              cons: 'Inline: Adds latency to every redirect. Async: Requires message queues, consumers, and eventual consistency handling.'
+              aspect: '302 / 307 Temporary Redirect',
+              pros: 'Default behavior indicates temporary relocation. (307 preserves request method; 302 rewrites to GET).',
+              cons: 'A 302 does NOT guarantee origin hits if downstream proxies or browser cache headers exist. Origin must explicitly set Cache-Control headers.'
+            },
+            {
+              aspect: 'Bounded Client Cache (307 + private max-age=300)',
+              pros: 'Absorbs rapid duplicate clicks during viral surges (5-min client cache) while preserving analytics accuracy and revocation control.',
+              cons: 'Slight delay (up to max-age) before revocations take effect on active user devices.'
             }
           ]}
         />
       </div>
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Abuse Prevention</h3>
+        <h3 className={styles.sectionTitle}>Analytics Ingestion: Critical Path Isolation</h3>
         <p className={styles.paragraph}>
-          Public URL shorteners are huge targets for spammers hiding malicious links. We must weigh the trade-off of friction vs security:
+          Updating a database column like <code className={styles.inlineCode}>click_count = click_count + 1</code> synchronously during a redirect is a fatal architecture flaw for high-scale systems: it turns read traffic into row-locked write transactions.
         </p>
         <ul className={styles.list}>
-          <li><strong>Rate Limiting:</strong> Essential to prevent bot creation spam, but might block legitimate heavy users.</li>
-          <li><strong>URL Validation:</strong> Checking destination URLs against malware blocklists (like Google Safe Browsing) protects users but adds latency to the creation process.</li>
+          <li>
+            <strong>Inline Database Write:</strong> High latency (5–30ms added to redirect), severe lock contention on viral links, and database failure brings down redirects.
+          </li>
+          <li>
+            <strong>Asynchronous Event Streaming (Kafka / Kinesis):</strong> The app server emits an in-memory event to a message bus in &lt;1ms and immediately redirects the user. Consumer workers batch-aggregate click metrics and write to an OLAP store (e.g. ClickHouse, Snowflake) without impacting the critical path.
+          </li>
         </ul>
+      </div>
+
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>Abuse Prevention</h3>
+        <p className={styles.paragraph}>
+          Public URL shorteners are targets for phishing and malware. Senior systems apply tiered defense:
+        </p>
+        <ul className={styles.list}>
+          <li><strong>Token-Bucket Rate Limiting:</strong> Enforced at the API Gateway / Load Balancer per IP and API key to prevent bot spam.</li>
+          <li><strong>Asynchronous Domain Reputation Scanning:</strong> Validating destination URLs against threat intelligence feeds (Google Safe Browsing) asynchronously or at creation time.</li>
+        </ul>
+      </div>
+
+      <div className={styles.section}>
+        <DecisionChallenge challenge={urlShortenerChallenges['redirect-status-codes']!} />
       </div>
     </div>
   );

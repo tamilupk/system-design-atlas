@@ -1,152 +1,319 @@
 .page {
-  min-height: calc(100vh - var(--toolbar-height));
+  height: calc(100vh - var(--toolbar-height));
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-bg);
 }
 
-.layout {
+/* Two-pane Layout */
+.bodyLayout {
   display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Collapsible Left Outline */
+.sidebar {
+  width: 0;
+  max-width: 0;
+  flex-shrink: 0;
+  border-right: 0 solid transparent;
+  background-color: var(--color-surface);
+  overflow: hidden;
+  height: 100%;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+              max-width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 15;
+}
+
+.sidebarOpen {
+  width: 260px;
+  max-width: 260px;
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+
+/* Primary Visual Surface: Architecture Diagram Stage */
+.visualStage {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  overflow-y: auto;
+  background-color: var(--color-bg);
+  gap: var(--space-3);
+  cursor: default;
+}
+
+.diagramContainer {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
 }
 
-.sidebar {
-  width: var(--sidebar-width);
-  flex-shrink: 0;
-  border-right: var(--border-width) solid var(--color-border);
-  background-color: var(--color-surface);
-  overflow-y: auto;
-  height: calc(100vh - var(--toolbar-height));
-  position: sticky;
-  top: var(--toolbar-height);
-}
-
-.mainContent {
-  flex: 1;
-  min-width: 0;
-  padding: var(--space-6) var(--space-8);
-  overflow-y: auto;
-}
-
-.contentInner {
-  max-width: var(--content-max-width);
+/* Centered Reading Mode when Step has no Diagram */
+.visualStageFullText {
+  max-width: 860px;
   margin: 0 auto;
+  width: 100%;
+  padding: var(--space-6) var(--space-4);
+  background-color: transparent;
+  overflow-y: auto;
+  cursor: default;
 }
 
-.conceptPanelWrapper {
-  width: var(--concept-panel-width);
+/* Dedicated Explanation Column (Adjustable width) */
+.explanationColumn {
+  min-width: 260px;
+  max-width: 800px;
   flex-shrink: 0;
-  border-left: var(--border-width) solid var(--color-border);
+  height: 100%;
   background-color: var(--color-surface);
   overflow-y: auto;
-  height: calc(100vh - var(--toolbar-height));
-  position: sticky;
-  top: var(--toolbar-height);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  cursor: default;
 }
 
-.mobileMenuButton {
-  display: none;
-}
-
-.diagramSection {
-  margin-bottom: var(--space-6);
-}
-
-.topBar {
+/* Draggable Divider Splitter between Visual Stage and Explanation Column */
+.resizer {
+  width: 8px;
+  margin-left: -4px;
+  margin-right: -4px;
+  z-index: 10;
+  cursor: col-resize;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  flex-shrink: 0;
+  background-color: transparent;
 }
 
-.breadcrumbs {
+.resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background-color: var(--color-border);
+  transition: background-color var(--transition-fast), width var(--transition-fast);
+}
+
+.resizer:hover::before,
+.resizerActive::before {
+  background-color: var(--color-primary);
+  width: 2px;
+}
+
+.resizerGrip {
+  width: 4px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border-hover);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast), background-color var(--transition-fast), height var(--transition-fast);
+  z-index: 11;
+  position: relative;
+}
+
+.resizer:hover .resizerGrip,
+.resizerActive .resizerGrip {
+  opacity: 1;
+  height: 48px;
+  background-color: var(--color-primary);
+}
+
+.resizer:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.resizer:focus-visible::before {
+  background-color: var(--color-primary);
+  width: 2px;
+}
+
+.lessonHeader {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.breadcrumbItem {
-  color: var(--color-text-secondary);
-}
-
-.breadcrumbCurrent {
-  color: var(--color-text-primary);
-  font-weight: var(--weight-medium);
-}
-
-.breadcrumbSeparator {
+.lessonStepIndex {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-text-tertiary);
 }
 
-.topBarActions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.lessonTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  margin: 0;
 }
 
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
+.lessonObjective {
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
-  font-size: var(--text-sm);
+  line-height: 1.5;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-.error {
+.conceptTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-1);
+}
+
+.conceptTagLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+}
+
+.conceptTag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 1px 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.conceptTag:hover {
+  background: var(--color-action-secondary-hover);
+  border-color: var(--color-border-strong);
+}
+
+.stepContentWrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
   gap: var(--space-4);
-  text-align: center;
-  padding: var(--space-8);
+  font-size: var(--text-sm);
+  line-height: 1.6;
 }
 
-.errorTitle {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
+/* Collapsible Right Inspector (0 width when closed) */
+.desktopInspector {
+  width: 0;
+  max-width: 0;
+  flex-shrink: 0;
+  border-left: 0 solid transparent;
+  background-color: var(--color-surface);
+  overflow: hidden;
+  height: 100%;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+              max-width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 15;
 }
 
-.errorMessage {
+.desktopInspectorOpen {
+  width: 350px;
+  max-width: 350px;
+  border-left: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+
+.keyboardShortcutModal {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shortcutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  max-width: 400px;
 }
 
-/* Focus mode: hide sidebar */
-.layout.focusMode .sidebar {
+.kbd {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  color: var(--color-text-primary);
+}
+
+.mobileDrawer {
   display: none;
 }
 
-.layout.focusMode .conceptPanelWrapper {
-  display: none;
-}
+/* Responsive Narrow Layout (< 1024px) */
+@media (max-width: 1023px) {
+  .page {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
 
-@media (max-width: 1024px) {
+  .bodyLayout {
+    flex-direction: column;
+    overflow: visible;
+    height: auto;
+  }
+
   .sidebar {
     display: none;
   }
-  
-  .conceptPanelWrapper {
+
+  .desktopInspector {
     display: none;
   }
-  
-  .mobileMenuButton {
-    display: flex;
-  }
-  
-  .mainContent {
-    padding: var(--space-4);
-  }
-}
 
-@media (max-width: 640px) {
-  .mainContent {
-    padding: var(--space-4) var(--space-3);
+  .mobileDrawer {
+    display: block;
+  }
+
+  .visualStage {
+    height: auto;
+    overflow: visible;
+    padding: var(--space-3);
+  }
+
+  .resizer {
+    display: none !important;
+  }
+
+  .explanationColumn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto;
+    overflow: visible;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-4);
   }
 }

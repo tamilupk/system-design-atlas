@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import styles from './ConceptPanel.module.css';
 import { SharedConcept, ConceptContextEntry } from '@/types/concept';
-import { X, ArrowLeft, Sparkles } from 'lucide-react';
+import { X, ArrowLeft, Sparkles, ExternalLink } from 'lucide-react';
 import { TradeoffTable } from './TradeoffTable';
 
 interface ConceptPanelProps {
@@ -124,6 +125,14 @@ export const ConceptPanel: React.FC<ConceptPanelProps> = ({
           <button className={styles.aiButton} onClick={() => onAskAI(concept.id)}>
             <Sparkles size={18} /> Ask AI about {concept.title}
           </button>
+          <Link
+            to={`/concepts/${concept.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.fullPageLink}
+          >
+            Open standalone concept guide <ExternalLink size={14} />
+          </Link>
         </div>
       </div>
     </div>

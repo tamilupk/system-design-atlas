@@ -9,10 +9,12 @@ const STEP_IDS = ['requirements', 'api-data', 'baseline', 'id-generation', 'cach
 describe('progressReducer', () => {
   it('should return initial state', () => {
     expect(initialState.app).toBe('system-design-atlas');
-    expect(initialState.schemaVersion).toBe(1);
+    expect(initialState.schemaVersion).toBe(2);
     expect(initialState.lastVisited).toBeNull();
     expect(initialState.preferences.chatProvider).toBe('chatgpt');
     expect(Object.keys(initialState.archetypes)).toHaveLength(0);
+    expect(initialState.challenges).toEqual({});
+    expect(initialState.decisionJournal).toEqual([]);
   });
 
   it('should handle VISIT_STEP', () => {
@@ -99,6 +101,59 @@ describe('progressReducer', () => {
       enabled: true,
     });
     expect(state.preferences.focusMode).toBe(true);
+  });
+
+  it('should handle SAVE_CHALLENGE_ATTEMPT and track demonstrated understanding', () => {
+    let state = progressReducer(initialState, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      challengeId: 'viral-link',
+      selectedOptionId: 'opt-b',
+      demonstratedUnderstanding: false,
+      notesDraft: 'Drafting notes on hotkey mitigation',
+      timestamp: '2026-01-01T00:00:00Z',
+    });
+
+    expect(state.challenges?.['viral-link']).toEqual({
+      challengeId: 'viral-link',
+      attemptedAt: '2026-01-01T00:00:00Z',
+      completedAt: null,
+      selectedOptionId: 'opt-b',
+      demonstratedUnderstanding: false,
+      notesDraft: 'Drafting notes on hotkey mitigation',
+    });
+
+    // Successfully demonstrates understanding
+    state = progressReducer(state, {
+      type: 'SAVE_CHALLENGE_ATTEMPT',
+      challengeId: 'viral-link',
+      selectedOptionId: 'opt-c',
+      demonstratedUnderstanding: true,
+      timestamp: '2026-01-01T00:05:00Z',
+    });
+
+    expect(state.challenges?.['viral-link']?.demonstratedUnderstanding).toBe(true);
+    expect(state.challenges?.['viral-link']?.completedAt).toBe('2026-01-01T00:05:00Z');
+    expect(state.challenges?.['viral-link']?.notesDraft).toBe('Drafting notes on hotkey mitigation');
+  });
+
+  it('should handle SAVE_DECISION_ENTRY in decision journal', () => {
+    const entry = {
+      id: 'dec-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      stepId: 'cache',
+      title: 'Cache Invalidation Strategy',
+      decision: 'Cache-aside with TTL bounded by link expiry',
+      rationale: 'Avoids stale redirects while protecting DB during traffic surges',
+      consequences: 'Requires singleflight query coalescing during cache outages',
+    };
+
+    const state = progressReducer(initialState, {
+      type: 'SAVE_DECISION_ENTRY',
+      entry,
+    });
+
+    expect(state.decisionJournal).toHaveLength(1);
+    expect(state.decisionJournal?.[0]).toEqual(entry);
   });
 
   it('should handle RESET', () => {
@@ -357,8 +412,21 @@ describe('validation', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('should reject wrong schema version', () => {
-    const bad = { ...initialState, schemaVersion: 2 };
+  it('should accept and migrate schemaVersion 1 to schemaVersion 2', () => {
+    const v1State = { ...initialState, schemaVersion: 1 };
+    delete (v1State as any).challenges;
+    delete (v1State as any).decisionJournal;
+    const result = validateProgressState(v1State);
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.state.schemaVersion).toBe(2);
+      expect(result.state.challenges).toEqual({});
+      expect(result.state.decisionJournal).toEqual([]);
+    }
+  });
+
+  it('should reject unsupported schema version', () => {
+    const bad = { ...initialState, schemaVersion: 99 };
     const result = validateProgressState(bad);
     expect(result.valid).toBe(false);
   });
@@ -433,6 +501,80 @@ describe('YAML round-trip', () => {
     const { importFromYaml } = await import('@/features/progress/yaml-transfer');
     const yaml = `app: system-design-atlas\nschemaVersion: 99\npreferences:\n  chatProvider: chatgpt\n  focusMode: false\nlastVisited: null\narchetypes: {}`;
     const result = await importFromYaml(yaml);
+    expect(result.valid).toBe(false);
+  });
+
+  it('should export and import user study notes via YAML', async () => {
+    const { exportToYaml, importFromYaml } = await import('@/features/progress/yaml-transfer');
+    let state = progressReducer(initialState, {
+      type: 'SET_ARCHETYPE_NOTE',
+      archetypeId: 'url-shortener',
+      note: '# URL Shortener Overview\nFocus on read-heavy caching and Base62 IDs.',
+    });
+    state = progressReducer(state, {
+      type: 'SET_STEP_NOTE',
+      archetypeId: 'url-shortener',
+      stepId: 'cache',
+      note: 'Consider probabilistic early expiration to prevent thundering herd.',
+    });
+
+    const yaml = await exportToYaml(state);
+    expect(yaml).toContain('URL Shortener Overview');
+    expect(yaml).toContain('probabilistic early expiration');
+
+    const result = await importFromYaml(yaml, ['url-shortener']);
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.state.notes?.archetypes['url-shortener']).toContain('URL Shortener Overview');
+      expect(result.state.notes?.steps['url-shortener']?.['cache']).toContain('probabilistic early expiration');
+    }
+  });
+});
+
+describe('notesReducer and validation', () => {
+  it('should handle SET_ARCHETYPE_NOTE and SET_STEP_NOTE', () => {
+    let state = progressReducer(initialState, {
+      type: 'SET_ARCHETYPE_NOTE',
+      archetypeId: 'url-shortener',
+      note: 'Chapter level study note',
+    });
+    expect(state.notes?.archetypes['url-shortener']).toBe('Chapter level study note');
+
+    state = progressReducer(state, {
+      type: 'SET_STEP_NOTE',
+      archetypeId: 'url-shortener',
+      stepId: 'api-data',
+      note: 'Step level study note for API',
+    });
+    expect(state.notes?.steps['url-shortener']?.['api-data']).toBe('Step level study note for API');
+  });
+
+  it('should merge notes cleanly on MERGE_STATE', () => {
+    const current = progressReducer(initialState, {
+      type: 'SET_STEP_NOTE',
+      archetypeId: 'url-shortener',
+      stepId: 'cache',
+      note: 'Local note',
+    });
+
+    const imported = progressReducer(initialState, {
+      type: 'SET_ARCHETYPE_NOTE',
+      archetypeId: 'url-shortener',
+      note: 'Imported chapter note',
+    });
+
+    const merged = progressReducer(current, {
+      type: 'MERGE_STATE',
+      imported,
+    });
+
+    expect(merged.notes?.steps['url-shortener']?.['cache']).toBe('Local note');
+    expect(merged.notes?.archetypes['url-shortener']).toBe('Imported chapter note');
+  });
+
+  it('should reject prototype pollution in notes', () => {
+    const malicious = JSON.parse('{"app":"system-design-atlas","schemaVersion":2,"preferences":{"chatProvider":"chatgpt","focusMode":false},"lastVisited":null,"archetypes":{},"notes":{"archetypes":{"__proto__":"hacked"}}}');
+    const result = validateProgressState(malicious);
     expect(result.valid).toBe(false);
   });
 });

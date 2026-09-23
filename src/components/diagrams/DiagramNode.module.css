@@ -1,35 +1,43 @@
 .node {
   cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
   outline: none;
+  transition: opacity 0.2s ease;
 }
 
-.node:hover {
-  transform: scale(1.03);
+.node .rect {
+  pointer-events: all;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease;
+}
+
+.node:hover .rect {
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.12));
 }
 
 .node:focus-visible .rect {
-  stroke-width: 3;
-  stroke: var(--color-primary, #2563EB);
+  stroke-width: 3px;
+  stroke: var(--color-primary, #000000);
+  filter: drop-shadow(0 0 0 3px rgba(37, 99, 235, 0.3));
 }
 
-.selected {
-  transform: scale(1.05);
+.selected .rect {
+  stroke-width: 3px;
+  stroke: var(--color-primary, #000000);
+  filter: drop-shadow(0 0 0 4px rgba(37, 99, 235, 0.35));
 }
 
 .highlighted .rect {
-  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.4));
+  stroke-width: 3px;
+  stroke: #2563EB;
+  filter: drop-shadow(0 0 12px rgba(37, 99, 235, 0.55));
 }
 
 .dimmed {
-  opacity: 0.3;
+  opacity: 0.65;
 }
 
 .label {
   pointer-events: none;
-  font-family: var(--font-sans, system-ui, sans-serif);
-}
-
-.rect {
-  transition: stroke-width 0.2s ease, filter 0.2s ease;
+  user-select: none;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
 }

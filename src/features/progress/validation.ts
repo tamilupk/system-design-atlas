@@ -15,7 +15,9 @@ export function validateProgressState(data: unknown): { valid: true; state: Prog
   if (!isObject(data)) return { valid: false, error: 'Data is not an object' };
 
   if (data.app !== 'system-design-atlas') return { valid: false, error: 'Invalid app identifier' };
-  if (data.schemaVersion !== 1) return { valid: false, error: 'Unsupported schema version' };
+  if (data.schemaVersion !== 1 && data.schemaVersion !== 2) {
+    return { valid: false, error: 'Unsupported schema version' };
+  }
 
   if (Object.hasOwn(data, 'exportedAt') && data.exportedAt !== undefined && !isValidTimestamp(data.exportedAt)) {
     return { valid: false, error: 'Invalid exportedAt timestamp' };
@@ -53,5 +55,39 @@ export function validateProgressState(data: unknown): { valid: true; state: Prog
     }
   }
 
-  return { valid: true, state: data as unknown as ProgressState };
+  if (data.notes !== undefined) {
+    if (!isObject(data.notes)) return { valid: false, error: 'Invalid notes format' };
+    if (data.notes.archetypes !== undefined) {
+      if (!isObject(data.notes.archetypes)) return { valid: false, error: 'Invalid archetype notes' };
+      for (const [key, val] of Object.entries(data.notes.archetypes)) {
+        if (key === '__proto__' || key === 'constructor') return { valid: false, error: 'Prototype pollution attempt in notes' };
+        if (typeof val !== 'string') return { valid: false, error: `Invalid note for archetype ${key}` };
+      }
+    }
+    if (data.notes.steps !== undefined) {
+      if (!isObject(data.notes.steps)) return { valid: false, error: 'Invalid step notes' };
+      for (const [archKey, stepsObj] of Object.entries(data.notes.steps)) {
+        if (archKey === '__proto__' || archKey === 'constructor') return { valid: false, error: 'Prototype pollution attempt in step notes' };
+        if (!isObject(stepsObj)) return { valid: false, error: `Invalid step notes for archetype ${archKey}` };
+        for (const [stepKey, val] of Object.entries(stepsObj)) {
+          if (stepKey === '__proto__' || stepKey === 'constructor') return { valid: false, error: 'Prototype pollution attempt in step notes' };
+          if (typeof val !== 'string') return { valid: false, error: `Invalid note for step ${archKey}/${stepKey}` };
+        }
+      }
+    }
+  }
+
+  // Schema migration & normalization to version 2
+  const migratedState: ProgressState = {
+    ...(data as unknown as ProgressState),
+    schemaVersion: 2,
+    challenges: isObject(data.challenges) ? (data.challenges as any) : {},
+    decisionJournal: Array.isArray(data.decisionJournal) ? (data.decisionJournal as any) : [],
+    notes: isObject(data.notes) ? {
+      archetypes: isObject(data.notes.archetypes) ? (data.notes.archetypes as Record<string, string>) : {},
+      steps: isObject(data.notes.steps) ? (data.notes.steps as Record<string, Record<string, string>>) : {},
+    } : { archetypes: {}, steps: {} },
+  };
+
+  return { valid: true, state: migratedState };
 }

@@ -1,12 +1,13 @@
 import { type ReactNode } from 'react';
 import { TopToolbar } from './TopToolbar';
+import { ToolbarProvider } from './ToolbarContext';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
   readonly children: ReactNode;
 }
 
-export function AppShell({ children }: AppShellProps) {
+function AppShellInner({ children }: AppShellProps) {
   return (
     <div className={styles.shell}>
       <TopToolbar />
@@ -14,5 +15,13 @@ export function AppShell({ children }: AppShellProps) {
         {children}
       </main>
     </div>
+  );
+}
+
+export function AppShell({ children }: AppShellProps) {
+  return (
+    <ToolbarProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </ToolbarProvider>
   );
 }

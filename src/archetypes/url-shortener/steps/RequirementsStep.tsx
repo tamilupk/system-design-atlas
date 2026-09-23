@@ -31,21 +31,30 @@ export const RequirementsStep: FC<StepComponentProps> = () => {
       </div>
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Scale Assumptions</h3>
+        <h3 className={styles.sectionTitle}>Scale Assumptions & Working Set</h3>
         <p className={styles.paragraph}>
-          To design the system appropriately, we need to estimate the traffic and data volume. We'll use these back-of-the-envelope calculations:
+          In senior interviews, you must translate monthly aggregates into peak throughput, working-set memory, and multi-year storage:
         </p>
         <ul className={styles.list}>
-          <li><strong>Writes:</strong> ~100 million new URLs created per month (average of ~40 writes per second).</li>
-          <li><strong>Reads:</strong> Assuming a 10:1 read-to-write ratio, we will see ~1 billion redirects per month (average of ~400 reads per second).</li>
-          <li><strong>Storage:</strong> If each URL record takes ~500 bytes, generating 100M URLs per month requires ~50GB of storage per month, or ~600GB per year.</li>
+          <li>
+            <strong>Writes:</strong> ~100M new URLs created per month (~40 writes/sec average; design for a 5× peak of ~200 writes/sec).
+          </li>
+          <li>
+            <strong>Reads:</strong> ~1B redirects per month (~400 reads/sec average; viral campaigns and push notifications create 25×–50× peak bursts of <strong>10,000–20,000 reads/sec</strong>).
+          </li>
+          <li>
+            <strong>Working-Set Memory (80/20 Rule):</strong> 20% of URLs drive 80% of reads. 20M hot monthly URLs × 500 bytes ≈ <strong>10 GB RAM</strong>, easily cached in a high-availability Redis pair.
+          </li>
+          <li>
+            <strong>Storage:</strong> 100M URLs × 500 bytes = 50 GB/month (600 GB/year). A 5-year retention window requires ~3 TB total disk storage, easily managed by a single modern PostgreSQL cluster with read replicas before needing sharding.
+          </li>
         </ul>
       </div>
 
       <div className={styles.callout}>
-        <div className={styles.calloutLabel}>System Design Tip</div>
+        <div className={styles.calloutLabel}>Senior System Design Insight</div>
         <p className={styles.secondaryText}>
-          These scale numbers are illustrative. In a real interview or design document, stating your assumptions clearly gives you a solid foundation for deciding when a simple relational database is sufficient, and when you need more complex scaling mechanisms like sharding or heavy caching.
+          Always distinguish between <em>average load</em> and <em>peak bursts</em>. A single database node can handle 400 reads/sec with ease, but a 20,000 QPS burst during a product launch will saturate database connections unless absorbed by an edge cache tier.
         </p>
       </div>
     </div>

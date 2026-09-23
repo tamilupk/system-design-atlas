@@ -4,6 +4,7 @@ import { validateProgressState } from './validation';
 const STORAGE_KEY = 'system-design-atlas-progress-v1';
 
 export function isStorageAvailable(): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     const x = '__storage_test__';
     window.localStorage.setItem(x, x);
@@ -33,20 +34,13 @@ export function loadProgress(): ProgressState | null {
   }
 }
 
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-
 export function saveProgress(state: ProgressState): void {
   if (!isStorageAvailable()) return;
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn('Failed to save progress to storage:', e);
   }
-  saveTimeout = setTimeout(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.warn('Failed to save progress to storage:', e);
-    }
-  }, 1000);
 }
 
 export function getRawStorage(): string | null {

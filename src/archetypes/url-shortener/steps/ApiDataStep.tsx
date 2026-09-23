@@ -13,7 +13,7 @@ export const ApiDataStep: FC<StepComponentProps> = ({ onConceptClick }) => {
         </p>
         
         <p className={styles.paragraph}>
-          <strong>1. Create Short URL:</strong> The client sends the long URL and optional parameters.
+          <strong>1. Create Short URL:</strong> The client sends the long URL and optional parameters (custom alias, expiration).
         </p>
         <CodeBlock
           language="json"
@@ -25,23 +25,30 @@ export const ApiDataStep: FC<StepComponentProps> = ({ onConceptClick }) => {
   "expires_at": "2025-12-31T23:59:59Z"
 }
 
-// Response (201 Created)
+// Success Response (201 Created) - honors requested custom alias
 {
-  "short_code": "abc123",
-  "short_url": "https://short.url/abc123",
+  "short_code": "my-link",
+  "short_url": "https://short.url/my-link",
   "created_at": "2024-03-10T10:00:00Z"
+}
+
+// Conflict Response (409 Conflict) - when custom alias is already claimed
+{
+  "error": "alias_already_taken",
+  "message": "The custom alias 'my-link' is already in use. Please choose another alias."
 }`}
         />
 
         <p className={styles.paragraph}>
-          <strong>2. Redirect Endpoint:</strong> When a user navigates to the short URL, the server returns an HTTP redirect response.
+          <strong>2. Redirect Endpoint:</strong> When a user navigates to the short URL, the server returns an HTTP redirect response with explicit caching directives.
         </p>
         <CodeBlock
           language="http"
-          code={`// GET /:short_code (e.g., GET /abc123)
+          code={`// GET /:short_code (e.g., GET /my-link)
 
-HTTP/1.1 301 Moved Permanently
-Location: https://www.example.com/some/very/long/path/that/needs/shortening`}
+HTTP/1.1 302 Found
+Location: https://www.example.com/some/very/long/path/that/needs/shortening
+Cache-Control: private, max-age=90`}
         />
       </div>
 

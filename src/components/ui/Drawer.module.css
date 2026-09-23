@@ -1,7 +1,7 @@
 .portal {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 200;
   pointer-events: none;
 }
 
@@ -77,4 +77,8 @@
   flex: 1;
   padding: var(--space-5, 24px);
   overflow-y: auto;
+}
+
+.noPadding {
+  padding: 0 !important;
 }

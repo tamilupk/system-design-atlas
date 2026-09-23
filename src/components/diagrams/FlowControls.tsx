@@ -45,9 +45,8 @@ export const FlowControls: React.FC<FlowControlsProps> = ({
           <IconButton
             icon={<Play size={18} />}
             onClick={onPlay}
-            label="Play flow"
-            title="Play"
-            disabled={isEnd}
+            label={isEnd ? "Replay flow" : "Play flow"}
+            title={isEnd ? "Replay" : "Play"}
           />
         )}
         

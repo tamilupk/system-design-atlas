@@ -1,4 +1,4 @@
-import React, { createContext, useReducer, useEffect, ReactNode, useState, useRef } from 'react';
+import React, { createContext, useReducer, useEffect, ReactNode, useState } from 'react';
 import { ProgressState, ProgressAction } from './types';
 import { progressReducer, initialState } from './reducer';
 import { loadProgress, saveProgress, isStorageAvailable } from './storage';
@@ -12,26 +12,26 @@ interface ProgressContextValue {
 
 export const ProgressContext = createContext<ProgressContextValue | null>(null);
 
+function initializeState(defaultState: ProgressState): ProgressState {
+  if (typeof window !== 'undefined' && isStorageAvailable()) {
+    const saved = loadProgress();
+    if (saved) {
+      return saved;
+    }
+  }
+  return defaultState;
+}
+
 export function ProgressProvider({ children }: { children: ReactNode }) {
-  const [storageAvailable, setStorageAvailable] = useState(true);
-  const [state, dispatch] = useReducer(progressReducer, initialState);
-  const isInitialized = useRef(false);
+  const [storageAvailable, setStorageAvailable] = useState(() => isStorageAvailable());
+  const [state, dispatch] = useReducer(progressReducer, initialState, initializeState);
 
   useEffect(() => {
-    const avail = isStorageAvailable();
-    setStorageAvailable(avail);
-    
-    if (avail && !isInitialized.current) {
-      const saved = loadProgress();
-      if (saved) {
-        dispatch({ type: 'REPLACE_STATE', state: saved });
-      }
-      isInitialized.current = true;
-    }
+    setStorageAvailable(isStorageAvailable());
   }, []);
 
   useEffect(() => {
-    if (isInitialized.current && storageAvailable) {
+    if (storageAvailable) {
       saveProgress(state);
     }
   }, [state, storageAvailable]);

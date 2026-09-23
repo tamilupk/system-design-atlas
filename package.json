@@ -1,14 +1,26 @@
 {
   "name": "system-design-atlas",
-  "private": true,
   "version": "1.0.0",
+  "description": "Interactive, decision-driven system design curriculum and architecture simulator for senior engineers.",
+  "license": "MIT",
   "type": "module",
+  "keywords": [
+    "system-design",
+    "distributed-systems",
+    "software-architecture",
+    "faang",
+    "interview-prep",
+    "interactive-learning",
+    "react",
+    "typescript"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "dev": "vite --host",
+    "build": "tsc -b && vite build && vite-node scripts/prerender.ts",
+    "prerender": "vite-node scripts/prerender.ts",
+    "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

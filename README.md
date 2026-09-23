@@ -1,96 +1,143 @@
 # System Design Atlas
 
-An interactive learning experience for system design, built with React, TypeScript, and Vite.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![React 19](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF.svg)](https://vitejs.dev/)
+[![Tests](https://img.shields.io/badge/Tests-Passing-success.svg)](https://vitest.dev/)
 
-## Features
+An interactive, decision-driven system design curriculum and architecture simulator built for engineers with 10+ years of experience preparing for senior, staff, and principal technical interviews at tier-one tech companies.
 
-- **Interactive Lessons**: Step-by-step system design walkthroughs with architecture diagrams
-- **Clickable Architecture Diagrams**: SVG-based diagrams with animated request flows
-- **Concept Exploration**: Deep-dive into components like caches, load balancers, and database indexes
-- **Progress Tracking**: Persistent local progress with YAML export/import
-- **AI Assistance**: Contextual prompts for ChatGPT, Claude, and Gemini
-- **Responsive Design**: Works on desktop and mobile
+---
+
+## Key Highlights
+
+- 🖥️ **Split Learning Surface**: Desktop-first layout with interactive SVG architecture diagrams on the left and an adjustable 260–750px explanation and challenge pane on the right.
+- ⚡ **Animated Request Flows**: Multi-sequence packet animations (`Cache Hit`, `Cache Miss`, `Write Path`) that auto-play to illustrate distributed data paths step-by-step.
+- 🎯 **Decision-Based Learning**: Interactive interview challenges following the `Predict → Choose → Simulate → Explain → Retry` loop, evaluating real trade-offs and edge cases under peak loads.
+- 📝 **Dual-Scope Study Notes**: Candidate notes for either the active step or the entire chapter, auto-saved to browser storage and exportable via YAML.
+- 🔍 **Real URLs & Static Prerendering**: HTML5 History push-state routing (`/archetypes/url-shortener/steps/cache/`, `/concepts/cache/`) with build-time static HTML prerendering, automated sitemap, and robots.txt for search engine indexing.
+- 💾 **Safe Local Progress**: Zero-login, 100% private client-side progress tracking with schema migrations, reset confirmation, and YAML import/export transfer.
+- 🤖 **Contextual AI Assistant**: Pre-formatted, prompt-engineered templates for ChatGPT, Claude, and Gemini populated with current step context, architecture state, and trade-offs.
+
+---
 
 ## Available Content
 
-- ✅ URL Shortener (9 interactive steps)
-- 📋 19 additional chapters planned
+| Chapter | Stage | Steps | Status |
+|---|---|---|---|
+| **URL Shortener** | Foundation | 9 Interactive Steps | ✅ **Available** |
+| **Product Catalog** | Foundation | — | 📋 Planned |
+| **Photo Sharing & Video Delivery** | Foundation | — | 📋 Planned |
+| **Notification Service** | Foundation | — | 📋 Planned |
+| **Home Timeline** | Foundation | — | 📋 Planned |
+| **Product Search & Autocomplete** | Foundation | — | 📋 Planned |
+| **Real-Time Chat** | Foundation | — | 📋 Planned |
+| **Ticket Booking** | Foundation | — | 📋 Planned |
+| **Checkout & Payments** | Foundation | — | 📋 Planned |
+| **Event Streams & Analytics** | Advanced | — | 📋 Planned |
+| **Location & Matching** | Advanced | — | 📋 Planned |
+| **Distributed Infrastructure** | Advanced | — | 📋 Planned |
+| **Collaborative Editing** | Advanced | — | 📋 Planned |
+| **LLM Request/Response Apps** | GenAI | — | 📋 Planned |
+| **Conversational Assistants** | GenAI | — | 📋 Planned |
+| **Retrieval-Augmented Generation** | GenAI | — | 📋 Planned |
+| **Tool-Using Agents & Workflows** | GenAI | — | 📋 Planned |
+| **Real-Time Multimodal Agents** | GenAI | — | 📋 Planned |
+| **Asynchronous Generation Pipelines** | GenAI | — | 📋 Planned |
+| **Model Serving & AI Gateways** | GenAI | — | 📋 Planned |
 
-## Getting Started
+The authoritative list lives in [`src/archetypes/catalog.ts`](src/archetypes/catalog.ts); planned chapters are labeled `availability: 'planned'` and are never rendered as lessons until implemented.
 
+---
+
+## Quickstart
+
+### Prerequisites
+- Node.js 20+
+- npm 10+
+
+### Installation & Development
 ```bash
+# Clone the repository
+git clone https://github.com/your-username/system-design-atlas.git
+cd system-design-atlas
+
 # Install dependencies
 npm install
 
-# Start development server
+# Start Vite dev server
 npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Type checking
-npm run typecheck
-
-# Run tests
-npm test
 ```
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-## Static Hosting
+---
 
-This application uses hash-based routing (`/#/...`), making it compatible with any static file host without server-side configuration.
+## Available Scripts
 
-```bash
-npm run build
-# Deploy the `dist/` folder to any static host
-```
+| Command | Description |
+|---|---|
+| `npm run dev` | Starts Vite local development server with HMR. |
+| `npm run build` | Compiles TypeScript, bundles Vite production assets, and prerenders all static HTML pages. |
+| `npm run prerender` | Re-runs only the static HTML/sitemap prerender step against an existing `dist/`. |
+| `npm run preview` | Previews the production build locally. |
+| `npm run typecheck` | Type-checks the entire TypeScript codebase (`tsc --noEmit`). |
+| `npm run lint` | Runs ESLint with the flat config (`--max-warnings 0`). |
+| `npm test` | Runs unit tests using Vitest. |
+| `npm run test:watch` | Runs Vitest in watch mode. |
+| `npm run test:e2e` | Runs Playwright end-to-end integration and visual verification tests. |
 
-## Technology
+---
 
-- **React 19** with TypeScript (strict mode)
-- **Vite 6** for development and building
-- **React Router 7** with hash-based routing
-- **CSS Modules** with global design tokens
-- **Lucide React** for icons
-- **YAML** for progress export/import
+## Adding New Chapters
 
-## Project Structure
+System Design Atlas is designed as a reusable framework. Adding a new archetype does not require recreating components from scratch:
+
+1. **Read the Master Guide**: Open **[`docs/authoring-archetypes.md`](docs/authoring-archetypes.md)**.
+2. **Author with AI**: Copy the built-in Master Prompt into ChatGPT or Claude to generate complete, mathematically grounded curriculum specs.
+3. **Build with Antigravity**: Paste the generated spec into Antigravity to scaffold components, diagrams, and tests using the reusable primitives (`@/components/lesson/StepComponents` and `@/utils/diagram-builder`).
+4. **Register**: Add the chapter in `src/archetypes/catalog.ts` and `src/archetypes/registry.ts`.
+
+---
+
+## Architecture & Technology
 
 ```
 src/
-  app/          — App entry, routing, providers
-  pages/        — Route-level page components
-  components/   — Reusable UI components
-  archetypes/   — Chapter content (one folder per chapter)
-  concepts/     — Shared concept definitions
-  features/     — Cross-cutting features (progress, chat)
-  hooks/        — Shared custom hooks
-  types/        — TypeScript type definitions
-  styles/       — Global CSS and design tokens
+├── app/               # Application router (real paths & hash redirects)
+├── archetypes/        # Chapter implementations and catalog
+│   ├── catalog.ts     # Metadata for all available and planned archetypes
+│   ├── registry.ts    # Lazy loading registry
+│   └── url-shortener/ # Complete reference archetype implementation
+├── components/        # Reusable UI building blocks
+│   ├── challenge/     # Interactive decision challenge widgets
+│   ├── chat/          # AI prompt dialog & provider selectors
+│   ├── diagrams/      # SVG architecture canvas, nodes, edges & flow player
+│   ├── layout/        # App shell, unified top toolbar, toolbar context
+│   ├── lesson/        # Shared step typography, callouts, cards, code blocks
+│   ├── notes/         # Study notes modal with step & chapter scopes
+│   └── ui/            # Buttons, dialogs, drawers, toasts
+├── concepts/          # Canonical concept definitions (cache, database, etc.)
+├── features/          # Progress storage, validation, YAML transfer, chat assist
+├── hooks/             # Custom React hooks (useProgress, useLessonNavigation)
+├── styles/            # Global design tokens (tokens.css)
+├── types/             # Shared TypeScript interfaces
+└── utils/             # Diagram builder, Base62 encoders, prerender helpers
 ```
 
-See `docs/architecture.md` for detailed architecture documentation.
+### Design Principles
+- **Dependency Flow**: Pages $\rightarrow$ Features/Components $\rightarrow$ Types/Utils. Chapters never import another chapter's private files.
+- **Design Tokens**: Standard CSS custom properties in `src/styles/tokens.css` without arbitrary hardcoded colors.
+- **Accessibility**: Semantic HTML, ARIA dialogs/roles, keyboard shortcuts (`N` for notes, `B` for outline, `M` for complete, `?` for help).
 
-## Progress & Data
+---
 
-- Progress is stored in `localStorage` under a versioned key.
-- Progress is specific to this browser and origin.
-- Export/import progress as YAML files.
-- See `docs/progress-format.md` for schema details.
+## Contributing
 
-## Limitations
+Contributions from the distributed systems community are welcome! Please read **[`CONTRIBUTING.md`](CONTRIBUTING.md)** for details on coding standards, testing requirements, and the Pull Request process.
 
-- Only the URL Shortener chapter is currently available.
-- No backend or API — all state is local.
-- AI assistance opens external chatbots (no API keys required).
-- No dark theme (light theme only).
-- No syntax highlighting in code blocks.
+---
 
-## Documentation
+## License
 
-- `AGENTS.md` — Instructions for AI coding agents
-- `docs/architecture.md` — System architecture and design decisions
-- `docs/authoring-archetypes.md` — How to add new chapters
-- `docs/progress-format.md` — Progress data schema and behavior
+This project is licensed under the [MIT License](LICENSE).

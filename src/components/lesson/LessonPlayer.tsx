@@ -1,22 +1,17 @@
 import { useEffect, type FC, type ComponentType } from 'react';
 import styles from './LessonPlayer.module.css';
 import type { LessonStep, StepComponentProps } from '@/types/lesson';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
 interface LessonPlayerProps {
   step: LessonStep;
   stepComponent: ComponentType<StepComponentProps>;
   stepIndex: number;
   totalSteps: number;
-  isCompleted: boolean;
-  onComplete: () => void;
-  onUncomplete: () => void;
-  onPrevious: () => void;
-  onNext: () => void;
   onConceptClick: (conceptId: string) => void;
-  onAskAI: () => void;
-  hasPrevious: boolean;
-  hasNext: boolean;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
 }
 
 export const LessonPlayer: FC<LessonPlayerProps> = ({
@@ -24,15 +19,11 @@ export const LessonPlayer: FC<LessonPlayerProps> = ({
   stepComponent: StepComponent,
   stepIndex,
   totalSteps,
-  isCompleted,
-  onComplete,
-  onUncomplete,
+  onConceptClick,
   onPrevious,
   onNext,
-  onConceptClick,
-  onAskAI,
-  hasPrevious,
-  hasNext
+  hasPrevious = false,
+  hasNext = false,
 }) => {
 
   useEffect(() => {
@@ -42,9 +33,9 @@ export const LessonPlayer: FC<LessonPlayerProps> = ({
       }
       
       if (e.key === 'ArrowLeft' && hasPrevious) {
-        onPrevious();
+        onPrevious?.();
       } else if (e.key === 'ArrowRight' && hasNext) {
-        onNext();
+        onNext?.();
       }
     };
 
@@ -68,46 +59,6 @@ export const LessonPlayer: FC<LessonPlayerProps> = ({
           onConceptClick={onConceptClick}
         />
       </div>
-
-      <footer className={styles.footer}>
-        <div className={styles.navLeft}>
-          <button 
-            className={styles.navButton} 
-            onClick={onPrevious} 
-            disabled={!hasPrevious}
-          >
-            <ChevronLeft size={20} /> Previous
-          </button>
-        </div>
-        
-        <div className={styles.navCenter}>
-          {isCompleted ? (
-            <button className={styles.completeButtonAlt} onClick={onUncomplete}>
-              Mark Incomplete
-            </button>
-          ) : (
-            <button className={styles.completeButton} onClick={() => {
-              onComplete();
-              if (hasNext) onNext();
-            }}>
-              Complete & Next
-            </button>
-          )}
-        </div>
-        
-        <div className={styles.navRight}>
-          <button className={styles.aiButton} onClick={onAskAI}>
-            <Sparkles size={18} /> Ask AI
-          </button>
-          <button 
-            className={styles.navButton} 
-            onClick={onNext} 
-            disabled={!hasNext}
-          >
-            Next <ChevronRight size={20} />
-          </button>
-        </div>
-      </footer>
     </div>
   );
 };

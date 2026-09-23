@@ -5,16 +5,16 @@ export const chatProviders: Record<ChatProvider, ChatProviderConfig> = {
   chatgpt: {
     id: 'chatgpt',
     name: 'ChatGPT',
-    url: 'https://chat.openai.com/',
+    url: 'https://chatgpt.com/',
     icon: 'MessageSquare',
-    supportsUrlPrefill: false,
+    supportsUrlPrefill: true,
   },
   claude: {
     id: 'claude',
     name: 'Claude',
     url: 'https://claude.ai/new',
     icon: 'Bot',
-    supportsUrlPrefill: false,
+    supportsUrlPrefill: true,
   },
   gemini: {
     id: 'gemini',
@@ -27,4 +27,16 @@ export const chatProviders: Record<ChatProvider, ChatProviderConfig> = {
 
 export function getProviderConfig(id: ChatProvider): ChatProviderConfig {
   return chatProviders[id];
+}
+
+export function getProviderUrl(provider: ChatProviderConfig, prompt?: string): string {
+  if (provider.supportsUrlPrefill && prompt) {
+    if (provider.id === 'chatgpt') {
+      return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
+    }
+    if (provider.id === 'claude') {
+      return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+    }
+  }
+  return provider.url;
 }

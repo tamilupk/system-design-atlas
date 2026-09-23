@@ -5,7 +5,7 @@ export interface ChatProviderConfig {
   readonly name: string;
   readonly url: string;
   readonly icon: string;
-  readonly supportsUrlPrefill: false;
+  readonly supportsUrlPrefill: boolean;
 }
 
 export type PromptAction =

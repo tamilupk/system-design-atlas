@@ -2,13 +2,19 @@ import { ProgressState, ProgressAction } from './types';
 
 export const initialState: ProgressState = {
   app: 'system-design-atlas',
-  schemaVersion: 1,
+  schemaVersion: 2,
   preferences: {
     chatProvider: 'chatgpt',
     focusMode: false,
   },
   lastVisited: null,
   archetypes: {},
+  challenges: {},
+  decisionJournal: [],
+  notes: {
+    archetypes: {},
+    steps: {},
+  },
 };
 
 export function progressReducer(state: ProgressState, action: ProgressAction): ProgressState {
@@ -104,6 +110,65 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
         },
       };
     }
+    case 'SAVE_CHALLENGE_ATTEMPT': {
+      const { challengeId, selectedOptionId, demonstratedUnderstanding, notesDraft, timestamp } = action;
+      const prev = state.challenges?.[challengeId];
+      return {
+        ...state,
+        challenges: {
+          ...(state.challenges || {}),
+          [challengeId]: {
+            challengeId,
+            attemptedAt: prev?.attemptedAt || timestamp,
+            completedAt: demonstratedUnderstanding ? timestamp : (prev?.completedAt || null),
+            selectedOptionId,
+            demonstratedUnderstanding: prev?.demonstratedUnderstanding || demonstratedUnderstanding,
+            notesDraft: notesDraft !== undefined ? notesDraft : prev?.notesDraft,
+          },
+        },
+      };
+    }
+    case 'SAVE_DECISION_ENTRY': {
+      const { entry } = action;
+      const currentJournal = state.decisionJournal || [];
+      const exists = currentJournal.some(e => e.id === entry.id);
+      return {
+        ...state,
+        decisionJournal: exists
+          ? currentJournal.map(e => (e.id === entry.id ? entry : e))
+          : [...currentJournal, entry],
+      };
+    }
+    case 'SET_ARCHETYPE_NOTE': {
+      const { archetypeId, note } = action;
+      return {
+        ...state,
+        notes: {
+          archetypes: {
+            ...(state.notes?.archetypes || {}),
+            [archetypeId]: note,
+          },
+          steps: state.notes?.steps || {},
+        },
+      };
+    }
+    case 'SET_STEP_NOTE': {
+      const { archetypeId, stepId, note } = action;
+      const prevArchSteps = state.notes?.steps?.[archetypeId] || {};
+      return {
+        ...state,
+        notes: {
+          archetypes: state.notes?.archetypes || {},
+          steps: {
+            ...(state.notes?.steps || {}),
+            [archetypeId]: {
+              ...prevArchSteps,
+              [stepId]: note,
+            },
+          },
+        },
+      };
+    }
     case 'REPLACE_STATE': {
       return action.state;
     }
@@ -168,10 +233,74 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
         }
       }
 
+      // Merge challenges
+      const mergedChallenges = { ...(state.challenges || {}) };
+      if (imported.challenges) {
+        for (const [cId, impChallenge] of Object.entries(imported.challenges)) {
+          const cur = mergedChallenges[cId];
+          if (!cur) {
+            mergedChallenges[cId] = impChallenge;
+          } else {
+            mergedChallenges[cId] = {
+              ...cur,
+              attemptedAt: new Date(impChallenge.attemptedAt) < new Date(cur.attemptedAt) ? impChallenge.attemptedAt : cur.attemptedAt,
+              demonstratedUnderstanding: cur.demonstratedUnderstanding || impChallenge.demonstratedUnderstanding,
+              completedAt: cur.completedAt || impChallenge.completedAt,
+              notesDraft: cur.notesDraft || impChallenge.notesDraft,
+            };
+          }
+        }
+      }
+
+      // Merge decision journal
+      const existingIds = new Set((state.decisionJournal || []).map(e => e.id));
+      const mergedJournal = [...(state.decisionJournal || [])];
+      if (imported.decisionJournal) {
+        for (const entry of imported.decisionJournal) {
+          if (!existingIds.has(entry.id)) {
+            mergedJournal.push(entry);
+            existingIds.add(entry.id);
+          }
+        }
+      }
+
+      // Merge user notes
+      const mergedNotes = {
+        archetypes: { ...(state.notes?.archetypes || {}) },
+        steps: { ...(state.notes?.steps || {}) },
+      };
+      if (imported.notes) {
+        if (imported.notes.archetypes) {
+          for (const [archId, note] of Object.entries(imported.notes.archetypes)) {
+            if (!mergedNotes.archetypes[archId] || mergedNotes.archetypes[archId].trim() === '') {
+              mergedNotes.archetypes[archId] = note;
+            } else if (note && note !== mergedNotes.archetypes[archId]) {
+              mergedNotes.archetypes[archId] = `${mergedNotes.archetypes[archId]}\n\n---\n\n${note}`;
+            }
+          }
+        }
+        if (imported.notes.steps) {
+          for (const [archId, stepNotes] of Object.entries(imported.notes.steps)) {
+            const currentStepNotes = { ...(mergedNotes.steps[archId] || {}) };
+            for (const [stepId, note] of Object.entries(stepNotes)) {
+              if (!currentStepNotes[stepId] || currentStepNotes[stepId].trim() === '') {
+                currentStepNotes[stepId] = note;
+              } else if (note && note !== currentStepNotes[stepId]) {
+                currentStepNotes[stepId] = `${currentStepNotes[stepId]}\n\n---\n\n${note}`;
+              }
+            }
+            mergedNotes.steps[archId] = currentStepNotes;
+          }
+        }
+      }
+
       return {
         ...state,
         lastVisited: newLastVisited,
         archetypes: mergedArchetypes,
+        challenges: mergedChallenges,
+        decisionJournal: mergedJournal,
+        notes: mergedNotes,
       };
     }
     case 'RESET': {

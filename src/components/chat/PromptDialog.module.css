@@ -6,6 +6,28 @@
   max-width: 600px;
 }
 
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.providerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.providerLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
 .actionSelector {
   display: flex;
   flex-wrap: wrap;

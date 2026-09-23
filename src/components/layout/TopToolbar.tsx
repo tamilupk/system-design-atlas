@@ -1,14 +1,30 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Upload, RotateCcw, ChevronDown } from 'lucide-react';
-import { ChatProviderSelect } from '@/components/chat/ChatProviderSelect';
+import { 
+  Download, 
+  Upload, 
+  RotateCcw, 
+  Database,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Keyboard,
+  NotebookPen,
+  PanelRight,
+  PanelLeft,
+  PanelLeftClose
+} from 'lucide-react';
 import { useProgress } from '@/hooks/useProgress';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
+import { AskAIButton } from '@/components/chat/AskAIButton';
 import { useToast } from '@/components/ui/Toast';
 import { archetypeCatalog } from '@/archetypes/catalog';
+import { useToolbar } from './ToolbarContext';
 import type { ProgressState } from '@/features/progress/types';
 import type { ImportSummary } from '@/features/progress/yaml-transfer';
+import logoUrl from '@/assets/logo.svg';
 import styles from './TopToolbar.module.css';
 
 interface ImportPreviewData {
@@ -19,6 +35,7 @@ interface ImportPreviewData {
 export function TopToolbar() {
   const { state, dispatch } = useProgress();
   const { addToast } = useToast();
+  const { hidden, lessonNav } = useToolbar();
   
   const [menuOpen, setMenuOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -117,23 +134,123 @@ export function TopToolbar() {
   };
 
   return (
-    <header className={styles.toolbar}>
-      <Link to="/" className={styles.brand}>
-        <span className={styles.brandFull}>System Design Atlas</span>
-        <span className={styles.brandShort}>SDA</span>
-      </Link>
+    <header className={`${styles.toolbar} ${hidden ? styles.hidden : ''}`}>
+      <div className={styles.leftSection}>
+        <Link to="/" className={styles.brand} aria-label="System Design Atlas">
+          <img src={logoUrl} alt="System Design Atlas" className={styles.logoImage} />
+        </Link>
+
+        {lessonNav && (
+          <>
+            <IconButton 
+              icon={lessonNav.sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeft size={17} />} 
+              onClick={lessonNav.onToggleSidebar} 
+              label="Toggle outline" 
+              title={lessonNav.sidebarOpen ? "Collapse sidebar [B]" : "Expand sidebar [B]"}
+              className={styles.sidebarToggle}
+            />
+            
+            <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+              <Link to="/" className={styles.breadcrumbLink}>Atlas</Link>
+              <ChevronRight size={13} className={styles.breadcrumbSeparator} />
+              <span className={styles.breadcrumbLink}>{lessonNav.breadcrumbs.chapterTitle}</span>
+              <ChevronRight size={13} className={styles.breadcrumbSeparator} />
+              <span className={styles.breadcrumbCurrent}>{lessonNav.breadcrumbs.stepTitle}</span>
+            </nav>
+          </>
+        )}
+      </div>
+
+      {lessonNav && (
+        <div className={styles.centerSection}>
+          <div className={styles.stepNavGroup}>
+            <div className={styles.stepNav} role="navigation" aria-label="Step navigation">
+              <button
+                className={styles.stepNavBtn}
+                onClick={lessonNav.stepNav.goToPrevious}
+                disabled={!lessonNav.stepNav.hasPrevious}
+                title="Previous step [Left Arrow]"
+                aria-label="Previous step"
+              >
+                <ChevronLeft size={14} />
+                <span>Prev</span>
+              </button>
+
+              <span className={styles.stepCounter}>
+                {lessonNav.stepNav.currentIndex} / {lessonNav.stepNav.totalSteps}
+              </span>
+
+              <button
+                className={styles.stepNavBtn}
+                onClick={lessonNav.stepNav.goToNext}
+                disabled={!lessonNav.stepNav.hasNext}
+                title="Next step [Right Arrow]"
+                aria-label="Next step"
+              >
+                <span>Next</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+
+            <button
+              className={`${styles.markCompleteBtn} ${lessonNav.isCompleted ? styles.markCompleteBtnActive : ''}`}
+              onClick={lessonNav.onToggleComplete}
+              title={lessonNav.isCompleted ? "Click to mark incomplete [M]" : "Mark step complete without advancing [M]"}
+              aria-label={lessonNav.isCompleted ? "Step completed, click to mark incomplete" : "Mark step complete"}
+            >
+              <Check size={14} className={styles.markCompleteIcon} />
+              <span className={styles.markCompleteText}>
+                {lessonNav.isCompleted ? 'Completed' : 'Mark complete'}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className={styles.actions}>
-        <ChatProviderSelect />
-        
+        {lessonNav?.onOpenShortcuts && (
+          <IconButton
+            icon={<Keyboard size={16} />}
+            onClick={lessonNav.onOpenShortcuts}
+            label="Keyboard shortcuts"
+            title="Keyboard shortcuts [?]"
+            className={styles.actionIconBtn}
+          />
+        )}
+
+        {lessonNav?.onOpenNotes && (
+          <IconButton
+            icon={<NotebookPen size={16} />}
+            onClick={lessonNav.onOpenNotes}
+            label="Study notes"
+            title="Study notes [N]"
+            className={`${styles.actionIconBtn} ${lessonNav.hasNotes ? styles.actionIconBtnActive : ''}`}
+          />
+        )}
+
+        {lessonNav?.inspectAction && (
+          <Button 
+            variant={lessonNav.inspectAction.isOpen ? "primary" : "secondary"}
+            size="sm"
+            onClick={lessonNav.inspectAction.onToggle}
+            aria-label={lessonNav.inspectAction.isOpen ? "Hide component inspector" : "Open component inspector"}
+            className={styles.inspectBtn}
+          >
+            <PanelRight size={15} />
+            <span>{lessonNav.inspectAction.isOpen ? 'Hide' : 'Inspect'}</span>
+          </Button>
+        )}
+
         <div className={styles.menuWrapper} ref={menuRef}>
           <button 
-            className={styles.menuButton} 
+            className={styles.iconMenuButton} 
             onClick={() => setMenuOpen(!menuOpen)}
             aria-expanded={menuOpen}
             aria-haspopup="true"
+            aria-label="Data"
+            title="Data management (Export, Import, Reset)"
           >
-            Data <ChevronDown size={16} />
+            <Database size={16} />
           </button>
           
           {menuOpen && (
@@ -150,6 +267,17 @@ export function TopToolbar() {
             </div>
           )}
         </div>
+
+        {lessonNav?.askAIProps && (
+          <AskAIButton 
+            chapterTitle={lessonNav.askAIProps.chapterTitle}
+            stepTitle={lessonNav.askAIProps.stepTitle}
+            stepObjective={lessonNav.askAIProps.stepObjective}
+            designSummary={lessonNav.askAIProps.designSummary}
+            conceptTitle={lessonNav.askAIProps.conceptTitle}
+            conceptContext={lessonNav.askAIProps.conceptContext}
+          />
+        )}
       </div>
 
       <input

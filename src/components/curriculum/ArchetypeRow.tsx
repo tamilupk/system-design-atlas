@@ -21,8 +21,10 @@ export const ArchetypeRow: FC<ArchetypeRowProps> = ({ metadata, progress, isNext
         <div className={styles.info}>
           <div className={styles.header}>
             <h3 className={styles.title}>{metadata.title}</h3>
-            <span className={`${styles.stage} ${styles[metadata.stage]}`}>{metadata.stage}</span>
-            {isPlanned && <span className={styles.plannedBadge}>Planned</span>}
+            <div className={styles.badgeGroup}>
+              <span className={`${styles.stage} ${styles[metadata.stage]}`}>{metadata.stage}</span>
+              {isPlanned && <span className={styles.plannedBadge}>Planned</span>}
+            </div>
           </div>
           <p className={styles.description}>{metadata.description}</p>
         </div>

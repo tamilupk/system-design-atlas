@@ -46,7 +46,7 @@ features → types (never components or archetypes)
 
 ## Adding a New Chapter
 
-1. Create `src/archetypes/<chapter-id>/` with: `index.ts`, `metadata.ts`, `lesson.ts`, `diagrams.ts`, `concept-context.ts`, and a `steps/` folder.
+1. Create `src/archetypes/<chapter-id>/` with: `metadata.ts`, `lesson.ts`, `diagrams.ts`, `challenges.ts`, `concept-context.ts`, `steps/`, and `index.ts`.
 2. Add metadata to `src/archetypes/catalog.ts` (change availability from 'planned' to 'available').
 3. Add the lazy loader to `src/archetypes/registry.ts`.
 4. Create step components in the `steps/` folder.
@@ -56,7 +56,21 @@ features → types (never components or archetypes)
 ## After Making Changes
 
 - Run `npm run typecheck` to verify TypeScript.
-- Run `npm run build` to verify the production build.
+- Run `npm run lint` to verify ESLint (zero warnings allowed).
+- Run `npm run build` to verify the production build and static prerender.
 - Run `npm test` to run unit tests.
+- Run `npm run test:e2e` for Playwright coverage of the lesson shell and diagrams.
 - Update documentation if architecture or contracts changed.
 - Verify the UI renders correctly at desktop and mobile sizes.
+
+## Documentation Map
+
+Keep these three documents true to the code; they are the only prose contracts in the repo.
+
+- `docs/architecture.md` — tech stack, routing, state management, persistence, prerender/SEO pipeline, diagram engine, lesson shell, chat-assist provider capabilities.
+- `docs/authoring-archetypes.md` — the AI master prompt, diagram/step primitives, chapter file contracts, wiring checklist, and anti-hallucination rules.
+- `docs/progress-format.md` — the persisted `ProgressState` schema, validation and prototype-pollution guards, version migration, and merge semantics.
+
+`CONTRIBUTING.md` holds the human-facing setup, verification commands, folder ownership, and the "Known Refactoring & Next Tasks" backlog. Check that backlog before starting unrelated work.
+
+When behavior changes, update the matching document in the same change rather than leaving it to drift.

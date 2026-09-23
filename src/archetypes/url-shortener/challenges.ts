@@ -1,0 +1,271 @@
+import type { ChallengeDefinition } from '@/types/challenge';
+
+export const urlShortenerChallenges: Record<string, ChallengeDefinition> = {
+  'id-generation-strategy': {
+    id: 'id-generation-strategy',
+    title: 'Architectural Dilemma: Short-Code Generation at Scale',
+    category: 'ID Generation',
+    scenario: 'Your system must handle 100 million short URL creations per month (approx. 40 creates/sec average, 500/sec peak). Competitors must not be able to crawl or guess short links by incrementing IDs. Database insertion locality must remain high.',
+    interviewContext: 'FAANG interviewers evaluate whether you understand the collision curve (Birthday Paradox), B-Tree indexing locality, and security implications of enumerable sequential keys.',
+    options: [
+      {
+        id: 'opt-random',
+        title: '7 Random Base62 Characters with DB Retry Loop',
+        description: 'App servers generate 7 random chars statelessly. On collision, the DB UNIQUE index rejects the insert, triggering a retry (up to 3 attempts).',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Collision Rate at 100M keys: ~0.0014% (Negligible). At 1B keys: ~0.14%.',
+          outcome: 'Functionally viable for small systems, but introduces random B-Tree page splits and non-deterministic latency spikes during collisions.',
+          impact: 'Random writes scatter across all leaf pages of the DB index, increasing buffer pool thrashing and write amplification on SSDs.',
+        },
+        seniorRationale: 'While random keys prevent enumeration, the true senior concern is storage engine locality. Pure random strings destroy B-Tree insertion cache locality because every write lands on an arbitrary leaf page.',
+        tradeOffSummary: 'Pros: Simple, stateless. Cons: High write amplification, random disk I/O, collision retries under scale.',
+      },
+      {
+        id: 'opt-feistel',
+        title: '64-bit Sequence/Snowflake + Feistel Pseudo-Random Permutation + Base62',
+        description: 'Generate sequential 64-bit integer IDs (via central counter or Snowflake generator), pass through a Feistel cipher permutation to obscure sequence without collisions, then Base62 encode.',
+        isOptimal: true,
+        simulationResult: {
+          metric: 'Collision Rate: 0.0000% (Strictly zero mathematical collisions across entire 64-bit space).',
+          outcome: 'Deterministic uniqueness with un-enumerable, randomized appearance to external users.',
+          impact: 'Zero retry overhead, predictable p99 latency (< 5ms), and complete resistance to competitor scraping.',
+        },
+        seniorRationale: 'This is the gold standard senior answer at Google and Meta. By applying a reversible pseudo-random permutation (like a 3-round Feistel cipher) over a sequential integer keyspace, you guarantee bijective 1-to-1 mapping (zero collisions) while producing completely scrambled, unguessable output strings.',
+        tradeOffSummary: 'Pros: Zero collisions, zero DB retries, completely unpredictable to scrapers. Cons: Minor algorithmic complexity in Feistel permutation.',
+      },
+      {
+        id: 'opt-md5',
+        title: 'MD5 Hash of Long URL Truncated to 7 Characters',
+        description: 'Hash the input long URL using MD5 or SHA-256, take the first 42 bits (7 Base62 chars), and insert into the database.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Collision Rate: Birthday paradox hits at ~1.9 million URLs (√62⁷ ≈ 1.87M).',
+          outcome: 'Disastrous collision storm as the table grows past 2 million records.',
+          impact: 'Different long URLs produce identical 7-character hashes, requiring manual collision salt loops.',
+        },
+        seniorRationale: 'Truncated cryptographic hashing is a classic junior interview anti-pattern. Due to the Birthday Paradox, a 42-bit hash has a 50% probability of collision after only ~1.9 million URLs, rendering it unusable for high-volume systems.',
+        tradeOffSummary: 'Pros: Idempotent by URL. Cons: Fatal collision cliff after 2M records; required hashing overhead.',
+      },
+      {
+        id: 'opt-raw-seq',
+        title: 'Raw Sequential Auto-Increment + Base62 Encoding',
+        description: 'Use database BIGSERIAL (1, 2, 3...) or centralized Redis INCR, directly encoded to Base62.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Scraping Vulnerability: 100% trivial enumeration attack.',
+          outcome: 'Zero collisions and great B-Tree locality, but competitors can crawl the entire database in hours.',
+          impact: 'Exposes exact business volume, total active URLs, and sensitive customer landing pages.',
+        },
+        seniorRationale: 'Raw sequential encoding is operationally simple and has perfect database locality, but in production, predictable IDs are an immediate security and business vulnerability. Anyone can write a loop from 1 to N and scrape every private link in your system.',
+        tradeOffSummary: 'Pros: Zero collisions, append-only B-Tree locality. Cons: Zero security; trivial competitor scraping.',
+      },
+    ],
+  },
+
+  'cache-eviction-ttl': {
+    id: 'cache-eviction-ttl',
+    title: 'Architectural Dilemma: Redis Eviction & TTL Configuration',
+    category: 'Caching Strategy',
+    scenario: 'Your URL shortener has 500 million active mappings in PostgreSQL (approx 50GB storage), but your cache budget is constrained to 10GB of RAM (approx 100M cached keys). Access patterns follow an 80/20 power law where popular links change dynamically over time.',
+    interviewContext: 'Interviewers look for realistic working-set calculations, understanding of Redis memory eviction algorithms (LRU vs LFU vs noeviction), and TTL jitter to prevent synchronized expiration.',
+    options: [
+      {
+        id: 'opt-lru-jitter',
+        title: 'Volatile-LRU + 24h TTL with ±10% Jitter bounded by Link Expiry',
+        description: 'Set a 24-hour TTL with random jitter (e.g. 21.6h - 26.4h) to avoid synchronized expiration waves, bounded by the link’s actual expiration timestamp. Use volatile-LRU eviction.',
+        isOptimal: true,
+        simulationResult: {
+          metric: 'Cache Hit Ratio: ~96.2% sustained. Database read offload: 95%+. Memory usage: Capped strictly at 9.8GB.',
+          outcome: 'Working set remains fresh in RAM; cold keys evict automatically; zero synchronized expiration spikes.',
+          impact: 'Protects primary database from sudden expiration flash-crowds while guaranteeing memory budget limits.',
+        },
+        seniorRationale: 'This demonstrates complete production maturity: (1) Jitter prevents cache stampedes caused by simultaneous key expiration waves; (2) Volatile-LRU ensures only keys with TTL are candidate for eviction, protecting operational metadata; (3) Bounding by expiration timestamp ensures expired links are never served.',
+        tradeOffSummary: 'Pros: Optimal hit ratio, zero expiration cliffs, strictly bounded memory. Cons: Small CPU overhead for pseudo-LRU sampling.',
+      },
+      {
+        id: 'opt-no-ttl',
+        title: 'Infinite TTL with AllKeys-LRU Eviction',
+        description: 'Never set a TTL on keys. Rely entirely on Redis LRU eviction to push out older keys when memory hits the 10GB maxmemory cap.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Memory churn: Constant eviction overhead; stale expired links remain in memory until evicted.',
+          outcome: 'Keys that have expired in PostgreSQL remain served by Redis until evicted by higher-traffic keys.',
+          impact: 'Violates expiration business logic: users who set a 1-hour expiration find their links active days later.',
+        },
+        seniorRationale: 'Omitting TTL breaks time-to-live correctness when users configure link expiration. Furthermore, without TTLs, temporary viral spikes permanently pollute the cache until memory saturation occurs.',
+        tradeOffSummary: 'Pros: Simple app code. Cons: Serves expired links; memory permanently pinned at 100%.',
+      },
+      {
+        id: 'opt-noeviction',
+        title: 'No-Eviction Policy with Strict 24h TTL',
+        description: 'Configure Redis with noeviction policy. Rely exclusively on TTL expiration to free memory.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'OOM Errors: Once 10GB is full, all Redis writes (SETEX) throw OOM errors until keys expire.',
+          outcome: 'Cache write path collapses during unexpected traffic spikes.',
+          impact: 'App servers encounter Redis errors and fall back to hammering the database on every single request.',
+        },
+        seniorRationale: 'Using noeviction in a caching tier is dangerous. Under an unexpected traffic surge, Redis memory fills up and immediately rejects all new writes, crippling the cache-aside populate path.',
+        tradeOffSummary: 'Pros: No unexpected data loss. Cons: Fatal OOM write failures during traffic surges.',
+      },
+    ],
+  },
+
+  'replication-lag-race': {
+    id: 'replication-lag-race',
+    title: 'Architectural Dilemma: Read-After-Write Consistency under DB Lag',
+    scenario: 'A user creates a short link `https://tiny.url/launch` on social media and immediately clicks it to test. The redirect query misses the cache and hits a Read Replica experiencing 80ms of replication lag. The replica returns row-not-found, serving an HTTP 404 to the creator.',
+    category: 'Database Replication',
+    interviewContext: 'FAANG system design interviews rigorously test eventual consistency and read-your-own-writes guarantees. How do you prevent fresh writes from appearing lost without degrading write throughput?',
+    options: [
+      {
+        id: 'opt-hybrid-routing',
+        title: 'Hybrid Read-After-Write Routing via Redis / Session Stamp',
+        description: 'When creating a short URL, immediately write the mapping to Redis with a 24h TTL. Additionally, record a temporary timestamp in the user session: for 5 seconds after creation, route reads by this user to the DB Primary if cache misses.',
+        isOptimal: true,
+        simulationResult: {
+          metric: 'Read-your-own-writes consistency: 100%. User-observed 404s: 0.00%.',
+          outcome: 'The creator and early followers hit Redis immediately (< 2ms). If Redis fails, read-after-write routing queries the Primary DB.',
+          impact: 'Negligible load on Primary DB (< 0.1% of reads), with absolute consistency for the link creator.',
+        },
+        seniorRationale: 'Senior engineers recognize that caching on write eliminates 99% of read-after-write races before the replica is ever touched. Pairing write-time cache warming with transient Primary routing for fresh links guarantees zero false 404s with zero impact on replica scalability.',
+        tradeOffSummary: 'Pros: Perfect creator consistency, zero write throughput penalty on DB. Cons: Requires tracking recent write timestamp.',
+      },
+      {
+        id: 'opt-sync-replication',
+        title: 'Convert Read Replicas to Synchronous Replication',
+        description: 'Configure PostgreSQL with `synchronous_commit = on` and synchronous replication so primary writes block until acknowledged by read replicas.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Write Latency: Jumps from 4ms to 65ms (16x increase). Primary write throughput drops by 70%.',
+          outcome: 'Consistency is guaranteed, but write performance and availability are severely degraded.',
+          impact: 'If a single read replica suffers a transient slowdown, all short URL creation across the entire globe freezes.',
+        },
+        seniorRationale: 'Synchronous replication couples write availability and latency to the slowest replica. In a system where reads outnumber writes 100:1, penalizing the write path with cross-node sync latency is poor architectural trade-off.',
+        tradeOffSummary: 'Pros: Zero replication lag. Cons: High write latency, vulnerability to replica network stalls.',
+      },
+      {
+        id: 'opt-retry-replica',
+        title: 'Poll Replica with Exponential Backoff on 404',
+        description: 'When the app server receives a 404 from a replica, sleep for 20ms and retry up to 3 times before returning 404 to the user.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Redirect p99 latency spikes to 180ms on cold/invalid links; app server worker threads become blocked sleeping.',
+          outcome: 'Legitimate 404 requests (typos, invalid URLs) are delayed by 100ms+.',
+          impact: 'Thread pool starvation on application servers under high error rates.',
+        },
+        seniorRationale: 'Retrying on 404 in the redirect critical path introduces thread blocking and latency inflation for genuine 404s. It converts a minor eventual consistency artifact into a Denial-of-Service vector.',
+        tradeOffSummary: 'Pros: Masks replication lag. Cons: Blown tail latency, thread starvation, wasted queries on typos.',
+      },
+    ],
+  },
+
+  'redirect-status-codes': {
+    id: 'redirect-status-codes',
+    title: 'Architectural Dilemma: 301 Permanent vs 302/307 Temporary Redirection',
+    scenario: 'Your engineering director asks: "Why are we serving 302/307 instead of 301? Browsers cache 301 redirects forever, which would save us millions in server bandwidth!" However, our business model requires click tracking analytics and support for link expiration and editing.',
+    category: 'HTTP & Edge Protocols',
+    interviewContext: 'Interviewers use this question to test depth in HTTP standards, RFC 9110 semantics, browser caching behavior, and analytics architecture.',
+    options: [
+      {
+        id: 'opt-302-cache-control',
+        title: 'HTTP 302/307 with Explicit Cache-Control: max-age=86400 (or private, no-cache)',
+        description: 'Serve HTTP 302 Found (or 307 Temporary) with explicit `Cache-Control` headers. For analytics-critical links, use `private, max-age=300` or `no-cache`; for stable links, allow 24h client caching.',
+        isOptimal: true,
+        simulationResult: {
+          metric: 'Analytics Accuracy: 99.8%. Bandwidth Savings: Up to 80% repeat-click offload without losing click tracking.',
+          outcome: 'Full control over redirection freshness: link expiration and custom updates take effect immediately.',
+          impact: 'Client browsers never lock in outdated destinations indefinitely.',
+        },
+        seniorRationale: 'HTTP 301 tells browsers and intermediary proxies to permanently cache the destination URL. If a user deletes an expired link, or updates a destination, or if a malware link is taken down, clients with cached 301s will continue navigating to the old target for months with zero server contact. 302/307 gives the origin service complete programmatic control via Cache-Control.',
+        tradeOffSummary: 'Pros: Real-time revocation, precise analytics, flexible caching control. Cons: Slightly higher request volume than permanent 301.',
+      },
+      {
+        id: 'opt-301-permanent',
+        title: 'HTTP 301 Permanent Redirect without Cache-Control',
+        description: 'Return standard HTTP 301 Moved Permanently to let browsers and CDNs cache the destination indefinitely.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Analytics loss: 60-80% of repeat clicks by the same user never hit our servers.',
+          outcome: 'Zero visibility into repeat visitors; zero ability to expire, update, or revoke malicious links.',
+          impact: 'A phishing link shortened on our platform cannot be revoked from users who already clicked it once.',
+        },
+        seniorRationale: 'Using unhedged 301s is catastrophic for URL shorteners. You lose analytics on returning visitors, you cannot enforce link expiration timestamps, and compliance teams cannot revoke abusive links from browser caches.',
+        tradeOffSummary: 'Pros: Maximum bandwidth offload. Cons: Permanent loss of analytics, impossible link revocation, security liability.',
+      },
+    ],
+  },
+
+  'thundering-herd-mitigation': {
+    id: 'thundering-herd-mitigation',
+    title: 'Architectural Dilemma: Thundering Herd & Cache Stampede',
+    scenario: 'A high-profile news outlet publishes a breaking story via your short link. The link expires in Redis at 14:00:00. At 14:00:01, 20,000 concurrent requests arrive in a single second for this single missing key. All 20,000 requests find a cache miss and rush to query PostgreSQL.',
+    category: 'High-Concurrency Caching',
+    interviewContext: 'Staff/Principal interviewers look for knowledge of request coalescing (Go singleflight / Java Guava LoadingCache), mutex locking vs probabilistic early expiration (XFetch algorithm).',
+    options: [
+      {
+        id: 'opt-singleflight',
+        title: 'In-Process Request Coalescing (Singleflight) + Short Distributed Lock',
+        description: 'Use the Singleflight pattern on application servers: if 500 requests for key "abc" arrive on an app instance simultaneously during a cache miss, only 1 request executes the DB query; the other 499 await its result. Set a 200ms Redis lock to protect against cross-node stampedes.',
+        isOptimal: true,
+        simulationResult: {
+          metric: 'Database queries: Drops from 20,000 queries/sec to 10 queries/sec (99.95% reduction).',
+          outcome: 'Database CPU stays under 5%; p99 latency remains flat (< 15ms) despite massive cache miss surge.',
+          impact: 'Complete immunity against thundering herd crashes.',
+        },
+        seniorRationale: 'Singleflight request coalescing collapses thousands of concurrent in-flight requests on the same app worker into a single shared execution promise. Combined with a short Redis lock or probabilistic early background revalidation (XFetch), you guarantee the database never sees more than a handful of queries for any hot key.',
+        tradeOffSummary: 'Pros: Flawless stampede immunity, zero DB CPU spikes. Cons: Requires in-memory concurrent map of active in-flight promises.',
+      },
+      {
+        id: 'opt-db-pool-expand',
+        title: 'Increase DB Connection Pool & Scale Read Replicas',
+        description: 'Increase application connection pool sizes and provision 10 additional PostgreSQL read replicas to absorb the 20,000 concurrent queries.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'DB Connection Thrashing: PostgreSQL CPU spikes to 100% due to lock contention and context switching.',
+          outcome: 'Database connection timeouts occur across ALL endpoints in the system.',
+          impact: 'Massive infrastructure cost increase that fails to prevent the root-cause stampede.',
+        },
+        seniorRationale: 'Throwing hardware and connection pools at a cache stampede is an anti-pattern. PostgreSQL context switching degrades exponentially when thousands of concurrent connections contend for disk I/O on identical rows.',
+        tradeOffSummary: 'Pros: No application code changes. Cons: Prohibitive server costs, severe connection pool exhaustion, database crash.',
+      },
+    ],
+  },
+
+  'rate-limiting-placement': {
+    id: 'rate-limiting-placement',
+    title: 'Architectural Dilemma: Rate Limiting & Abuse Prevention Placement',
+    scenario: 'Spam bots are making 5,000 requests/sec attempting to generate shortened links pointing to malware domains, and crawling short codes sequentially to discover private enterprise links. Where should rate limiting and abuse detection be enforced?',
+    category: 'System Protection & Edge Security',
+    interviewContext: 'Evaluates architectural boundary design: what belongs at Edge/CDN/API Gateway vs App Server layer vs Storage layer.',
+    options: [
+      {
+        id: 'opt-edge-gateway',
+        title: 'Edge / API Gateway Token Bucket backed by Redis + Webhook Abuse Scanner',
+        description: 'Enforce IP and API-key rate limits at the Edge/API Gateway using Redis Token Bucket before traffic ever reaches app servers. Route created URLs to an async message queue for domain safety reputation scanning.',
+        isOptimal: true,
+        simulationResult: {
+          metric: 'App server CPU offload: 92% of spam requests dropped at the network edge with HTTP 429.',
+          outcome: 'Core app instances and PostgreSQL remain completely shielded from DDoS and spam attacks.',
+          impact: 'Sub-millisecond rejection of bad actors with zero DB write load.',
+        },
+        seniorRationale: 'Rate limiting should always occur as close to the network edge as possible. By intercepting abusive traffic at the Gateway or Cloudflare Edge, app servers and database connection pools are preserved for legitimate customers.',
+        tradeOffSummary: 'Pros: Maximum backend shielding, scalable edge enforcement, asynchronous malware inspection. Cons: Requires distributed Redis cluster for edge counters.',
+      },
+      {
+        id: 'opt-app-inmemory',
+        title: 'In-Memory HashMap on Application Servers',
+        description: 'Track request counts per IP in local memory variables (`const ipCounts = new Map()`) on each app server node.',
+        isOptimal: false,
+        simulationResult: {
+          metric: 'Rate limit evasion: 85% of bot traffic bypasses limits due to load balancer round-robin distribution.',
+          outcome: 'If you have 10 app servers, an attacker can send 10x the allowed quota by distributing requests.',
+          impact: 'Memory leakage on app servers tracking millions of unique IP addresses.',
+        },
+        seniorRationale: 'In-memory rate limiting fails across distributed instances because requests from the same bot land on different backend servers. Furthermore, tracking millions of unique IP keys in local heap leads to garbage collection pauses and OOMs.',
+        tradeOffSummary: 'Pros: Zero external network calls. Cons: Ineffective across clustered backends, vulnerable to memory exhaustion.',
+      },
+    ],
+  },
+};
