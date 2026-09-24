@@ -17,9 +17,9 @@ Treat this document as the complete chapter implementation checklist. Read it be
 1. **Define the content:** choose stable chapter/step/challenge IDs and an unused catalog sequence. Generate the specification using Part 1, then review assumptions, calculations, failure modes, and technical claims. The executable example below has one step for brevity; a published chapter needs the complete reviewed learning trajectory.
 2. **Preserve the reference UI:** use URL Shortener as the visual reference and compose steps from `@/components/lesson/StepComponents`. Reuse the existing `src/pages/LessonPage.tsx` shell, diagram canvas, outline, navigation, notes, completion, challenges, and concept inspector automatically through the registry. Do not create another route shell or copy chapter-private CSS. Use `src/styles/tokens.css` for any necessary custom widgets, kept inside the new chapter. Existing reference steps with private styles are not templates for new chapters.
 3. **Implement the chapter:** follow the file contracts in Part 3. Keep manifests and metadata lightweight; keep lesson UI behind the dynamic import. Never change shared pages to branch on the new chapter ID. Only extend a shared component when it provides a reusable capability.
-4. **Register all three entries:** metadata in `src/archetypes/catalog.ts`, the default-exporting lazy loader in `src/archetypes/registry.ts`, and the data-only manifest in `src/archetypes/step-manifests.ts`. Register new shared concepts separately. Keep incomplete chapters planned; publish as available only with complete content and passing checks.
-5. **Verify before declaring completion:** run every Part 5 command in order. Inspect the new chapter at desktop sizes (1440×900 and 1366×768), checking long text, tables, code, diagram labels/edges, node inspection, flow playback, keyboard navigation, challenge evaluation, reload/resume, and notes. Mobile is secondary, but content must remain accessible. Check step URLs directly and confirm readable lesson content in generated HTML and entries in `dist/sitemap.xml`.
-6. **Report evidence:** list changed files, commands and results, desktop checks, and any unresolved content or layout limitation. Do not call a chapter complete based only on TypeScript passing. No deployment is required for chapter authoring.
+4. **Register all three entries:** metadata in `src/archetypes/catalog.ts`, the default-exporting lazy loader in `src/archetypes/registry.ts`, and the data-only manifest in `src/archetypes/step-manifests.ts`. Register new shared concepts separately. Keep incomplete chapters planned; publish as available only with complete content and passing checks. Synchronize the README Available Content table with the chapter title, stage, actual manifest step count, and availability.
+5. **Verify before declaring completion:** run every Part 5 command in order, then directly open the local server in a browser and exercise the chapter; passing test suites or reviewing test screenshots alone is insufficient. Inspect the new chapter at desktop sizes (1440×900 and 1366×768), checking long text, tables, code, diagram labels/edges, node inspection, flow playback, keyboard navigation, challenge evaluation, reload/resume, and notes. Also inspect a narrow mobile viewport (375–390px): no page overflow, reachable controls, readable lesson text, and usable diagram zoom/fit. Mobile is secondary, but content must remain accessible. Check step URLs directly and confirm readable lesson content in generated HTML and entries in `dist/sitemap.xml`.
+6. **Report evidence:** list changed files, commands and results, direct browser checks, a concise self-critique of clarity and technical depth, and any unresolved content or layout limitation. Give a scoped release recommendation only after fixing blockers; distinguish verified behavior from assumptions. Do not call a chapter complete based only on TypeScript passing. No deployment is required for chapter authoring.
 
 ### Choosing and evolving chapter length
 
@@ -51,15 +51,19 @@ The system to design is: [SYSTEM NAME]
 Generate the complete, mathematically grounded curriculum specification following the structured schema below.
 
 ### Requirements for Content Quality:
-1. Target Audience: Engineers with 10+ years of experience preparing for Senior/Staff/Principal system design interviews.
-2. Mathematical Rigor: Do not use vague estimates. Compute realistic writes/sec, peak reads/sec, payload sizes, working-set RAM (80/20 rule), network egress bandwidth, and 3-5 year storage retention.
+1. Target Audience: Engineers with 10+ years of experience preparing for Senior/Staff/Principal system design interviews at tier-one and strong tier-two companies.
+2. Mathematical Rigor: Do not use vague estimates. Derive the capacity dimensions relevant to this system: writes/sec, peak reads/sec, payload sizes, working-set RAM, network egress, and storage under an explicit retention policy. Justify skew and cache-hit assumptions; an 80/20 distribution or 3–5 year retention is not a universal requirement.
 3. Show Your Work: Every number must state its assumptions and its derivation. Write "100M DAU × 2 actions/day ÷ 86400s ≈ 2,300 avg writes/sec; ×3 peak factor ≈ 7,000 peak writes/sec", never just "7,000 writes/sec". The same applies to memory, latency, storage, and cost figures.
 4. Realistic Distributed Failure Modes: Include split-brain, network partitions, replica lag, thundering herds, hot partitions, and cache invalidation races — where they actually apply to this system.
 5. Progressive Disclosure: Choose the step count from the learning objectives, not a fixed quota. A focused system may need about 6 steps; a broader system may need 10–15 or more. These are examples, not bounds. Start with the simplest correct baseline and add a step when it introduces a distinct decision, invariant, failure mode, or exercise. Merge shallow steps; split overloaded ones. Explain why the chosen boundaries fit this system.
 6. Architecture Follows the System: The step trajectory below is a **suggested outline**, not a rule. Do not add Redis, an API gateway, sharding, or read replicas just because the outline mentions them. Messaging, collaboration, stream processing, storage, and GenAI systems each deserve their own middle steps (ordering guarantees, presence and CRDTs, watermarks and backpressure, compaction and repair, token budgets and model routing). Keep the consistent shape — requirements → API/data → baseline → domain core → scale → reliability → trade-offs → recap — and vary the substance.
-7. Honesty About Numbers: Label simulated or back-of-envelope results as illustrative (for example "Illustrative estimate, not a measured benchmark"). Never present a hard-coded latency or cost figure as a measurement. Qualify strong claims ("in our experience", "at this scale", "typically") or cite the mechanism that produces the number.
+7. Honesty About Numbers: Label simulated or back-of-envelope results as illustrative (for example "Illustrative estimate, not a measured benchmark"). Never present a hard-coded latency or cost figure as a measurement. Support strong claims with mechanisms and primary sources; qualifiers such as "typically" are not evidence. Never invent operational experience or company adoption. Do not add component p99 values and call the sum an end-to-end p99.
 8. No Universal Answers: Distinguish what is preferred **for this scenario** from what is universally correct. A choice that wins at 100k QPS may be wrong at 1k QPS; say so.
-9. Concepts: Reuse the shared concepts already registered in `src/concepts/registry.ts` ("cache", "database-index", "load-balancer", "idempotency") where they genuinely apply. If the chapter needs a new one, define it in Section E as a **shared** concept (reusable explanation, trade-offs, failure modes) plus a **chapter-specific** context entry (how it behaves here, example data, edge cases). Never fold chapter-specific detail into the shared explanation.
+9. Concepts: Reuse the shared concepts already registered in `src/concepts/registry.ts` ("cache", "database-index", "load-balancer", "idempotency", "message-ordering", "transactional-outbox"; verify the current registry) where they genuinely apply. If the chapter needs a new one, define it in Section E as a **shared** concept (reusable explanation, trade-offs, failure modes) plus a **chapter-specific** context entry (how it behaves here, example data, edge cases). Never fold chapter-specific detail into the shared explanation.
+
+10. Engagement: Open substantial steps with a concrete decision, incident, or prediction. Explain the mechanism, let the reader reason before revealing the answer, and return to the scenario. Use plausible competing options, not strawmen; end with a defensible decision and its cost. Avoid filler, vendor-name trivia, and splitting content merely to create more pages.
+11. Staff-level review: For every step, challenge the invariants, state ownership, acknowledgement boundary, failure assumptions, recovery path, and operational cost where applicable. Distinguish transport guarantees from application guarantees. Include authorization and data lifecycle implications where relevant. Review the complete trajectory for missing prerequisites, duplicated explanations, and unsupported promises.
+12. Evidence: Check current official documentation, protocol specifications, and relevant first-party engineering case studies for niche or changing claims. Link sources near substantive claims, distinguish our illustrative design from a source company's architecture, and explain where the design stops applying. Make changes only when this review exposes a real gap.
 
 ### Produce your output structured into the following exact sections:
 
@@ -82,7 +86,7 @@ First give a brief rationale for the chosen step count and boundaries. Then prov
 5. diagramStateId: diagram state ID (omit for text-only steps; otherwise e.g. "baseline", "with-cache", "scaled")
 6. highlightedNodes: array of node IDs **that exist in that diagram state** to focus in this step (e.g. ["client", "gateway", "redis"])
 7. flowSequenceId: optional flow sequence **declared by that same diagram state** to auto-select/highlight (e.g. "allowed-flow", "throttled-flow")
-8. concepts: array of concept IDs relevant to this step. Reuse registered IDs where they genuinely apply: "cache", "database-index", "load-balancer", "idempotency". If introducing a new concept, name it in kebab-case and define it in Section E.
+8. concepts: array of concept IDs relevant to this step. Reuse registered IDs where they genuinely apply; read the current registry, including "message-ordering" and "transactional-outbox" when relevant. If introducing a new concept, name it in kebab-case and define it in Section E.
 
 Suggested coverage areas — these are not required one-to-one steps. Combine related areas for a focused chapter or split substantial areas into multiple lessons. Preserve requirements, a correct baseline, domain reasoning, relevant scaling/failure analysis, trade-offs, and synthesis somewhere in the trajectory; do not force Redis, a gateway, sharding, or read replicas where they do not belong:
 - Coverage: Requirements & Scale (Functional/non-functional requirements, mathematical scale calculations with stated assumptions)
@@ -102,7 +106,7 @@ For each state, provide:
    - id: unique string (e.g. "client", "api-gateway", "app-server", "redis-cluster", "primary-db")
    - label: display name
    - role: Exactly one of: "client" | "service" | "database" | "cache" | "loadbalancer" | "queue" | "external"
-   - x, y: Coordinates on standard 1000 x 500 grid:
+   - x, y: Illustrative coordinates on a roughly 1000 x 500 canvas, not a fixed grid or runtime limit. Adapt to keep labels, edges, and controls legible:
      * Client: x: 70, y: 220
      * Ingress / Load Balancer / Gateway: x: 240, y: 220
      * Core Application / Service: x: 430, y: 220
@@ -110,6 +114,7 @@ For each state, provide:
      * Queue / Worker Tier: x: 430, y: 370
      * Primary Database: x: 640, y: 220
      * Read Replicas / Secondary: x: 640, y: 370
+   - implementationExamples (optional): reviewed Tech/AWS/GCP implementations of this specific node. Each entry has shortLabel, name, note, and an official HTTPS docsUrl. Explain configuration and semantic gaps; omit unsupported mappings. See Optional implementation examples below.
    - spec (Component Specification):
      * responsibilities: 3 bullet points
      * inputsAndProtocols: Protocols and ports (e.g. "HTTPS / gRPC over HTTP/2")
@@ -127,7 +132,7 @@ For each state, provide:
 3. Flow Sequences (Interactive packet flows):
    - id: kebab-case string (e.g. "allowed-flow", "throttled-flow")
    - title: Display title (e.g. "1. Request Allowed (Tokens Available)", "2. Request Throttled (429 Rate Limited)")
-   - events: array of 3-6 sequential events:
+   - events: a focused sequence of events (often 3–6, not a runtime limit):
      * label: short event label (e.g. "Client Request", "Token Check", "HTTP 429")
      * description: 1-sentence technical explanation of what is happening
      * edgeIds: array of edge IDs animated during this event
@@ -155,7 +160,7 @@ Define decision challenges at consequential architectural forks (often 1–2 ini
 #### SECTION E: Concepts
 Two different things, kept separate on purpose:
 
-**E1. Shared concept definitions** — only for concepts that are genuinely reusable across chapters. Already registered: "cache", "database-index", "load-balancer", "idempotency". If this chapter needs a new one, provide the full `SharedConcept`:
+**E1. Shared concept definitions** — only for concepts that are genuinely reusable across chapters. Read the current registry. At this revision it includes "cache", "database-index", "load-balancer", "idempotency", "message-ordering", and "transactional-outbox". If this chapter needs a new one, provide the full `SharedConcept`:
 - id: kebab-case, stable (it is used in concept URLs and referenced by diagram nodes)
 - title, summary: 1-line hook
 - explanation: 2-4 paragraphs of chapter-independent explanation
@@ -178,7 +183,7 @@ For each step, provide:
 - Trade-off comparison tables (Aspect, Pros, Cons)
 - Code snippets (e.g. Lua scripts for Redis atomic ops, SQL schemas, API definitions)
 - Senior engineering callout insights
-- Follow-up interview probe questions
+- Follow-up interview probe questions, including adversarial failure/recovery cases and a recap that reconstructs the design from its invariants
 ````
 
 ---
@@ -196,6 +201,7 @@ Please implement the new archetype "[ARCHETYPE_NAME]" using the framework guidel
    - `challenges.ts`
    - `concept-context.ts`
    - `diagrams.ts`
+   - `implementation-examples.ts` (optional chapter-owned Tech/AWS/GCP mappings, passed to diagram nodes)
    - `steps-manifest.ts` (data-only id/title/shortTitle list, mirroring `lesson.ts` in order)
    - `steps/` (one component per step, composed from `@/components/lesson/StepComponents`)
    - `steps/index.ts`
@@ -269,9 +275,9 @@ export const rateLimiterLesson: LessonDefinition = {
 > [!IMPORTANT]
 > Every `id` above must line up with another file, or the chapter silently breaks:
 > - `archetypeId` must equal `metadata.id`.
-> - `diagramStateId` must be a key of `diagrams.states` (`'empty'` is reserved for text-only steps).
+> - `diagramStateId` must be a key of `diagrams.states` (omit the field for text-only steps; `'empty'` is not reserved).
 > - `highlightedNodes` must be node IDs **inside that diagram state**, and `flowSequenceId` must be a flow sequence **declared by that same state**.
-> - `concepts` must be registered in `src/concepts/registry.ts` (see Part 4, Step 3).
+> - `concepts` must be registered in `src/concepts/registry.ts` (see Part 4, Step 4).
 > - Each `id` must have a matching key in `steps/index.ts`, an entry in `steps-manifest.ts`, and a component.
 >
 > `validateArchetypeModule` checks all of these; run it rather than eyeballing the IDs.
@@ -734,7 +740,13 @@ Concept IDs are stable identifiers: they are referenced from `lesson.ts` steps, 
 ### Step 5: Automatic Validation
 The shipped-archetypes suite automatically loads every registered chapter and validates its manifest and cross-references. No chapter-specific test registration is required. Production prerendering runs the same validators and fails on invalid content before emitting routes.
 
-### Step 6: Static Rendering
+### Step 6: Synchronize the README
+
+When publishing a chapter or changing its title, stage, availability, or step count, update its row in `README.md` → **Available Content** in the same change. Read the metadata/catalog for title, stage, and availability, and count the entries in the registered step manifest; do not rely on remembered counts. A completed chapter must not remain labeled **Planned**, and unfinished chapters must not be advertised as available.
+
+Before declaring completion, compare the README row against those sources. This is a manual acceptance check: passing code, build, and browser tests does not prove the README is current. Review chapter-specific screenshots and descriptions for material staleness when the chapter changes.
+
+### Step 7: Static Rendering
 `scripts/prerender.ts` generates SEO HTML for every **available** catalog entry, its steps (from the validated lesson definition), and the shared concept pages. A newly registered chapter is picked up automatically — verify its routes appear in `dist/sitemap.xml` after `npm run build`.
 
 ---
@@ -781,7 +793,8 @@ npm run test:e2e    # browser regression coverage
 | 7 | **Challenges** | `challenges.ts` IS part of `ArchetypeModule` (`challenges:` in `index.ts`). Step components also import the map directly to pass one challenge to `<DecisionChallenge />`. |
 | 8 | **Shared Primitives** | Compose steps from `@/components/lesson/StepComponents` (`StepContent`, `StepSection`, `Paragraph`, `List`, `InlineCode`, `ConceptLink`, `Callout`, `CardGrid`, `Card`, `CodeBlock`, `TradeoffTable`, `DecisionChallenge`). Do NOT copy another chapter's CSS or components; put chapter-specific widgets in `<id>/components/`. |
 | 9 | **Manifest Registration** | Available chapters MUST have an entry in `src/archetypes/step-manifests.ts`; planned chapters MUST NOT. |
-| 10 | **Honest Numbers** | Label illustrative/simulated results as illustrative. Never present hard-coded latency or cost as measured. |
+| 10 | **README Synchronization** | The Available Content row must match the chapter metadata/catalog and actual manifest step count. Update it when publishing or changing the trajectory; never leave a completed chapter marked Planned. |
+| 11 | **Honest Numbers** | Label illustrative/simulated results as illustrative. Never present hard-coded latency or cost as measured. |
 
 ### Stable IDs and saved progress
 These IDs are persisted in `localStorage` and must never change once a chapter ships — renaming one silently orphans reader progress:
@@ -805,7 +818,7 @@ Challenge IDs are **scoped to a chapter**, not global. Two chapters may both def
 ### Field contract: required vs optional
 `LessonStep` — required: `id`, `title`, `objective`. Optional: `shortTitle`, `diagramStateId`, `highlightedNodes`, `flowSequenceId`, `concepts`.
 `ArchetypeMetadata` — required: `id`, `title`, `description`, `stage`, `sequence`, `availability`, `tags`. Optional: `estimatedMinutes`.
-`DiagramNode` — required: `id`, `label`, `role`, `x`, `y`. Optional: `conceptId`, `description`, `spec`.
+`DiagramNode` — required: `id`, `label`, `role`, `x`, `y`. Optional: `conceptId`, `description`, `spec`, `implementationExamples`.
 `ArchetypeModule` — required: `metadata`, `lesson`, `diagrams`, `conceptContext`, `stepComponents`. Optional: `challenges`.
 
 Everything in the Part 3 templates is an **example**; the IDs shown (`rate-limiter`, `storage-strategy`, `allowed-flow`, `redis`) are illustrative placeholders, not values to copy verbatim.
@@ -814,3 +827,39 @@ Everything in the Part 3 templates is an **example**; the IDs shown (`rate-limit
 `src/archetypes/__tests__/fixtures/rate-limiter/` is a minimal, test-only second chapter. Copy its structure when starting a chapter; replace the sample content and register your chapter in the catalog, registry, and manifest index. It is not published as a completed lesson.
 
 All nine chapter file templates above are exact copies of the compiled fixture files. `authoring.test.tsx` checks them for drift; strict typechecking compiles them. Integration coverage exercises the shared lesson shell, home navigation, concept associations, progress isolation, and static route generation. Update the fixture and document examples together.
+
+### Optional implementation examples
+
+Use the shared **Examples · Tech · AWS · GCP** control. Architectural roles remain the primary node labels. Examples start hidden; selecting one option shows its subtitles, and selecting it again hides them. Selection is local UI state, not persisted progress. Tech means cloud-agnostic implementation examples, not necessarily open source or self-hosted software. Name software in the default label only when the lesson has actually committed to it, such as Redis Cache.
+
+The shared contract is `ImplementationTarget` / `ImplementationExample` in `src/types/diagram.ts`. Declare optional `DiagramNode.implementationExamples`, keyed by `tech`, `aws`, or `gcp`. Every entry contains `shortLabel`, `name`, `note`, and an official HTTPS `docsUrl`.
+
+- Keep mappings in the chapter's own `implementation-examples.ts`, typed using `NonNullable<DiagramNode['implementationExamples']>`. Pass them through `createNode({ ..., implementationExamples })`; no shared-component chapter imports or registry changes are needed.
+- Author per node and state, never infer products from generic roles. Leave client devices and unsupported mappings unlabeled. Controls appear only for options with mappings in the current state.
+- Choose maintained, established technologies that fit the actual protocol, consistency, durability, capacity, and operating model. Verify current official documentation. Explain why the choice fits and what it does not provide in `note`; do not assert a universal best stack or invent company adoption.
+- Prefer one coherent example per option over a menu of logos. Runtime choices remain illustrative. Distinguish a custom service's implementation from its hosting platform; ordering, fencing, authorization, and recovery do not come with a VM or WebSocket library.
+- Preserve semantic differences: a read replica is not an HA standby; an asynchronous remote replica does not imply zero regional data loss. State required configuration rather than letting a product name imply a guarantee.
+- For combined nodes, cover the whole responsibility. Chat's outbox/fan-out worker is custom processing; SQS, Pub/Sub, or Kafka alone would not implement it. Model a separate broker boundary before recommending one.
+- Keep subtitles within the 120-unit node width. Full names, reasons, caveats, and links belong in the inspector. Toggling must not change node geometry or move edges.
+- Reuse the compact shared bar: 24px buttons with no vertical bar padding, keyboard activation, and visible focus. Keep it outside the SVG drawing area so it cannot cover nodes; do not create chapter-specific controls.
+- Verify Tech, AWS, GCP, switching, and turning examples off across applicable states at desktop and mobile sizes. Inspect links/caveats and check label fit, node stability, and unobstructed flow controls.
+
+Current reference mappings: URL Shortener uses Go/net/http, Envoy, Redis, and PostgreSQL; Chat uses Envoy ingress, custom Go services (coder/websocket for transport), Redis hints, PostgreSQL with configured synchronous AZ durability, and an asynchronous remote standby. These illustrate the process, not a required stack for other chapters. Cloud options must preserve the same architectural contract as the Tech example.
+
+### Diagram scope and routing boundaries
+
+Keep the baseline as simple as the stated guarantees permit. Introduce a node when it explains a distinct scaling, ownership, or failure boundary; do not omit an essential boundary merely to save one box. Reuse states until a real architectural change warrants another, and preserve stable node IDs and core coordinates where practical. An expanded state may reposition nodes to remain legible.
+
+- Say which boxes represent fleets and which infrastructure or traffic is intentionally omitted. A teaching diagram must not imply a single point of failure merely because a fleet is drawn as one box.
+- Attach concepts to the component that owns the responsibility. Load balancing, socket/session management, conversation-owner routing, and recipient fan-out are distinct decisions.
+- If a proxy remains in the data path, route requests and return traffic through it. Keep edge direction, flow animation, highlighted nodes, inspector text, and prose consistent. A response must not animate along the request edge in reverse.
+- For long-lived connections, distinguish balancing a new connection from routing each message. Explain binding, timeout policy, draining, reconnect jitter, re-authentication, and cursor recovery. Do not imply transparent socket migration or automatic balancing by application memory.
+- Verify the expanded final diagram directly in the browser: request, ACK, delivery, recovery, and failure sequences should remain understandable with examples on and off. Check overlaps, labels, zoom/fit, and inspector access.
+
+Chat is the reference: `scaled` and `regional` states expose redundant ingress; earlier `durable` states collapse it to focus on persistence and recovery. Both sender requests/ACKs and recipient delivery pass through ingress. Sender and recipient have separate established connections to the gateway fleet; recipient handshake and receipt traffic are explicitly omitted. Conversation ordering and ownership fencing remain application responsibilities.
+
+### Final editorial and release review
+
+Review every step, not only the final diagram. A senior reader should be able to defend the API, keys, correctness, and capacity assumptions; a staff reader should also be able to challenge failure boundaries, skew, recovery capacity, observability, rollout/draining, and product compromises. Use incident scenarios and adversarial recap questions to test reasoning, not terminology.
+
+Run the acceptance checks, then directly open the local server and exercise the real UI as required above. Report what was inspected, any remaining limitation, and whether the reviewed chapter is ready for release. Passing tests alone does not establish intuitive teaching or technical soundness; a release recommendation is scoped to the verified change and is not a deployment.

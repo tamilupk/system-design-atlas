@@ -8,11 +8,13 @@ export function RecapStep() {
         <li>Derive 23k peak sends/s, 94k live device deliveries/s, and the separate history/connection budgets from explicit assumptions.</li>
         <li>Persist retry identity on the client. Authorize and atomically commit sequence, message, and outbox on the conversation shard.</li>
         <li>ACK only the durable commit. Relay at least once; recipients deduplicate and repair gaps.</li>
-        <li>Separate socket routing from write ownership and recipient fan-out. Bound buffers; treat presence as disposable.</li>
+        <li>Balance new connections at ingress; keep established sockets on their gateway. Separate this from conversation write ownership and recipient fan-out. Bound buffers; treat presence as disposable.</li>
         <li>Fence old owners and check replicated commit positions before promotion. Make async DR’s possible data loss explicit.</li>
       </List>
+      <Paragraph>Read the diagram as fleets: redundant ingress proxies separate sender and recipient sockets to the gateway tier. The recipient’s handshake and receipt traffic are omitted; delivery uses its existing connection. Earlier diagrams collapse ingress to focus on persistence and recovery.</Paragraph>
     </StepSection>
     <StepSection title="Adversarial follow-ups — answer before revealing">
+      <details><summary>“Can the load balancer move a busy live socket?”</summary><Paragraph>No. Balance new connections, then retain their gateway binding. To redistribute existing sessions, drain and reconnect with jitter, re-authenticate, and resume from durable cursors. A healthy new gateway does not inherit the old gateway’s socket buffers. Conversation-owner routing and fencing remain separate.</Paragraph></details>
       <details><summary>“WebSocket is ordered. Why do we need sequence numbers?”</summary><Paragraph>One connection’s transport ordering cannot unify concurrent senders, multiple devices, relays, and reconnects. Durable per-conversation positions define canonical order and support recovery.</Paragraph></details>
       <details><summary>“The recipient ACKed, then its app crashed. Was it delivered?”</summary><Paragraph>Only if ACK followed local durable persistence under the stated device contract. Server receipt durability is separate; retry receipts using monotonic max updates. A read receipt still cannot prove human comprehension.</Paragraph></details>
       <details><summary>“The sender was removed while a message was queued.”</summary><Paragraph>Serialize send authorization with membership updates, defining a clear before/after order. Recheck recipient authorization before delivery; already delivered bytes cannot be revoked. State whether queued prior sends remain visible.</Paragraph></details>

@@ -176,3 +176,19 @@ On desktop, equal flexible side columns anchor step navigation independently of 
 - Visual cues must not rely solely on color.
 
 Content validation runs before prerendering emits routes. Browser concept pages and prerendering share `buildConceptIndex`; concept pages lazy-load registered available chapters to build their case-study list. Unit tests need no build output; `npm run test:build` checks artifacts after building.
+
+### Optional implementation examples
+
+Diagram nodes can declare `implementationExamples`, keyed by `tech`, `aws`, or `gcp`, with `shortLabel`, `name`, `note`, and an official HTTPS `docsUrl`. The shared canvas shows a small Examples toggle only when the current state has authored mappings. Examples start hidden, toggle off on a second click, and are local UI state (not persisted progress). Mapped nodes reserve a secondary text line without changing box size, coordinates, or edges. Full names, caveats, and documentation appear in the component inspector. Keep short labels within the 120-unit node width; verify desktop and mobile.
+
+Author examples per chapter and node, never by generic role. Distinguish custom application hosting from managed business logic, and read replicas from HA standbys. Leave unmapped nodes alone. Keep architectural labels primary; name software by default only where the lesson actually commits to it (for example Redis Cache). Cloud products are illustrative options, not interchangeable guarantees. URL Shortener and Real-Time Chat provide reviewed mappings. The compact Examples footer uses 24px buttons with no vertical bar padding; it remains outside the SVG drawing area. Chat maps custom services to compute, message shards to SQL with explicit zonal HA, presence to Redis, and remote replicas to asynchronous cross-region SQL replicas.
+
+
+Tech displays cloud-agnostic implementation examples alongside the AWS/GCP deployment options. All start off; selecting the active option again hides its subtitles. Tech does not imply self-hosting or a universal best stack. The shared contract is `ImplementationTarget` / `ImplementationExample` in `src/types/diagram.ts`; authored mappings live in each chapter's `implementation-examples.ts`.
+
+Choose maintained, established technologies that satisfy the node's actual consistency, protocol, durability, and operational requirements. Verify current official documentation and explain why the choice fits in `note`, including responsibilities it does not provide. Prefer one coherent implementation over a menu of logos; omit unsupported mappings. Do not invent company adoption or benchmark claims, force fashionable infrastructure into a simple design, or attach a managed broker to a combined outbox/worker node without modeling that change.
+
+Current examples: URL Shortener uses Go/net/http, Envoy, Redis, and PostgreSQL; Chat uses custom Go services (coder/websocket for socket transport), Redis hints, PostgreSQL with configured synchronous AZ durability, and an asynchronous remote standby. Language/runtime choices remain illustrative; custom ordering, fencing, authorization, and outbox logic must be identified explicitly. A cloud product's configuration must preserve the same architectural contract as its Tech example.
+
+
+Chat introduces an explicit load-balancer node in its `scaled` and `regional` states. Earlier `durable` diagrams show logical client-to-gateway paths with ingress omitted to focus on persistence and recovery. The scaled view expands both sender request/ACK paths and recipient delivery through ingress; recipients use a separate established connection to the gateway fleet. New connections are balanced, established sockets remain bound, and conversation-owner routing stays an application responsibility. Model redundant ingress, reconnect/drain behavior, and timeout configuration; do not imply seamless socket migration or per-message load balancing.

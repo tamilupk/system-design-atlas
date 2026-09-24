@@ -48,6 +48,23 @@ export const NodeSpecPanel: React.FC<NodeSpecPanelProps> = ({
           </section>
         )}
 
+        {node.implementationExamples && (
+          <section className={styles.section}>
+            <h4 className={styles.sectionTitle}>Implementation examples</h4>
+            <p className={styles.text}>Possible implementations; configuration and operational trade-offs still matter.</p>
+            <ul className={styles.list}>
+              {Object.entries(node.implementationExamples).map(([provider, example]) => (
+                <li key={provider}>
+                  <a href={example.docsUrl} target="_blank" rel="noopener noreferrer">
+                    {provider === 'tech' ? 'Tech' : provider.toUpperCase()}: {example.name}
+                  </a>
+                  {' — '}{example.note}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {spec?.responsibilities && spec.responsibilities.length > 0 && (
           <section className={styles.section}>
             <h4 className={styles.sectionTitle}>Architectural Responsibilities</h4>

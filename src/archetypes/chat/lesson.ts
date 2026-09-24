@@ -3,7 +3,7 @@ import type { LessonDefinition } from '@/types/lesson';
 export const chatLesson: LessonDefinition = {
   "archetypeId": "chat",
   "title": "Real-Time Chat",
-  "contentVersion": 3,
+  "contentVersion": 4,
   "steps": [
     {
       "id": "requirements",
@@ -99,8 +99,9 @@ export const chatLesson: LessonDefinition = {
       "title": "Millions of Sockets & Shards",
       "shortTitle": "Scaling",
       "objective": "Size gateway and shard capacity separately and move ownership safely.",
-      "diagramStateId": "durable",
+      "diagramStateId": "scaled",
       "highlightedNodes": [
+        "ingress",
         "gateway",
         "owner"
       ],
@@ -114,7 +115,7 @@ export const chatLesson: LessonDefinition = {
       "title": "One Hot Room, Millions of Deliveries",
       "shortTitle": "Fan-out",
       "objective": "Separate serial conversation order from parallel fan-out and choose an audience-specific delivery policy.",
-      "diagramStateId": "durable",
+      "diagramStateId": "scaled",
       "highlightedNodes": [
         "owner",
         "fanout",
@@ -131,7 +132,7 @@ export const chatLesson: LessonDefinition = {
       "title": "Backlogs, Retries & Recovery",
       "shortTitle": "Operations",
       "objective": "Detect delivery outages, bound retry pressure, and calculate recovery capacity.",
-      "diagramStateId": "durable",
+      "diagramStateId": "scaled",
       "highlightedNodes": [
         "store",
         "fanout"

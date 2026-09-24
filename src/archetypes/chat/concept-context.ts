@@ -34,7 +34,7 @@ export const chatConceptContext: ConceptContext = {
   "load-balancer": {
     "conceptId": "load-balancer",
     "chapterRole": "Spread long-lived WebSocket sessions over connection gateways.",
-    "exampleData": "wss://chat.example/ws (TLS 443)\nroute by socket count, memory, and outbound bytes",
+    "exampleData": "wss://chat.example/ws (TLS 443)\nbalance new connections across healthy gateways; monitor sockets, memory, and outbound bytes",
     "specificConsiderations": [
       "A socket remains on its gateway until disconnect; new sockets may use another.",
       "Drain deployments with reconnect jitter and admission limits.",

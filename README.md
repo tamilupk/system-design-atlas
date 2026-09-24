@@ -7,6 +7,10 @@
 
 An interactive, decision-driven system design curriculum and architecture simulator built for engineers with 10+ years of experience preparing for senior, staff, and principal technical interviews at tier-one tech companies.
 
+**[Explore System Design Atlas →](https://systemdesign.tamilarasu.dev/)**
+
+[![Real-Time Chat recap showing the architecture diagram, gap-recovery flow, and Tech implementation examples](docs/images/chat-recap.png)](https://systemdesign.tamilarasu.dev/archetypes/chat/steps/recap)
+
 ---
 
 ## Key Highlights
@@ -31,7 +35,7 @@ An interactive, decision-driven system design curriculum and architecture simula
 | **Notification Service** | Foundation | — | 📋 Planned |
 | **Home Timeline** | Foundation | — | 📋 Planned |
 | **Product Search & Autocomplete** | Foundation | — | 📋 Planned |
-| **Real-Time Chat** | Foundation | — | 📋 Planned |
+| **Real-Time Chat** | Foundation | 12 Interactive Steps | ✅ **Available** |
 | **Ticket Booking** | Foundation | — | 📋 Planned |
 | **Checkout & Payments** | Foundation | — | 📋 Planned |
 | **Event Streams & Analytics** | Advanced | — | 📋 Planned |

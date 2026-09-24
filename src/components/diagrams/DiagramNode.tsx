@@ -1,9 +1,10 @@
 import React, { KeyboardEvent } from 'react';
-import { DiagramNode as DiagramNodeType, DiagramNodeRole } from '@/types/diagram';
+import { DiagramNode as DiagramNodeType, DiagramNodeRole, ImplementationTarget } from '@/types/diagram';
 import styles from './DiagramNode.module.css';
 
 interface DiagramNodeProps {
   node: DiagramNodeType;
+  implementationTarget?: ImplementationTarget | null;
   selected: boolean;
   highlighted: boolean;
   dimmed: boolean;
@@ -203,6 +204,7 @@ const renderIcon = (role: DiagramNodeRole, color: string) => {
 
 export const DiagramNode: React.FC<DiagramNodeProps> = ({
   node,
+  implementationTarget,
   selected,
   highlighted,
   dimmed,
@@ -217,6 +219,8 @@ export const DiagramNode: React.FC<DiagramNodeProps> = ({
     }
   };
 
+  const example = implementationTarget ? node.implementationExamples?.[implementationTarget] : undefined;
+  const hasExamples = Boolean(node.implementationExamples);
   const isDashed = node.role === 'external';
 
   return (
@@ -228,7 +232,7 @@ export const DiagramNode: React.FC<DiagramNodeProps> = ({
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      aria-label={`${node.label} ${node.role}`}
+      aria-label={`${node.label} ${node.role}${example ? `; ${implementationTarget?.toUpperCase()} example: ${example.name}` : ''}`}
     >
       <rect
         x="-60"
@@ -243,13 +247,13 @@ export const DiagramNode: React.FC<DiagramNodeProps> = ({
         className={styles.rect}
       />
       
-      <g transform="translate(0, -5)">
+      <g transform={hasExamples ? "translate(0, -14)" : "translate(0, -5)"}>
         {renderIcon(node.role, colors.border)}
       </g>
       
       <text
         x="0"
-        y="22"
+        y={hasExamples ? 10 : 22}
         textAnchor="middle"
         fill={colors.text}
         className={styles.label}
@@ -258,6 +262,12 @@ export const DiagramNode: React.FC<DiagramNodeProps> = ({
       >
         {node.label}
       </text>
+      {example && (
+        <text x="0" y="29" textAnchor="middle" className={styles.cloudExample}>
+          <title>{example.name}: {example.note}</title>
+          {example.shortLabel}
+        </text>
+      )}
     </g>
   );
 };

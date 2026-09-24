@@ -1,3 +1,4 @@
+import { appExamples, loadBalancerExamples, cacheExamples, primaryExamples, replicaExamples } from './implementation-examples';
 import type { DiagramDefinition, DiagramNode } from '@/types/diagram';
 
 const CLIENT_NODE: DiagramNode = {
@@ -32,6 +33,7 @@ const CLIENT_NODE: DiagramNode = {
 };
 
 const LB_NODE: DiagramNode = {
+  implementationExamples: loadBalancerExamples,
   id: 'load-balancer-node',
   label: 'Load Balancer',
   role: 'loadbalancer',
@@ -63,6 +65,7 @@ const LB_NODE: DiagramNode = {
 };
 
 const APP_SERVER_1_NODE: DiagramNode = {
+  implementationExamples: appExamples,
   id: 'app-server-1',
   label: 'App Server 1',
   role: 'service',
@@ -99,6 +102,7 @@ const APP_SERVER_1_NODE: DiagramNode = {
 };
 
 const APP_SERVER_2_NODE: DiagramNode = {
+  implementationExamples: appExamples,
   id: 'app-server-2',
   label: 'App Server 2',
   role: 'service',
@@ -131,6 +135,7 @@ const APP_SERVER_2_NODE: DiagramNode = {
 };
 
 const CACHE_NODE: DiagramNode = {
+  implementationExamples: cacheExamples,
   id: 'cache-node',
   label: 'Cache (Redis)',
   role: 'cache',
@@ -163,6 +168,7 @@ const CACHE_NODE: DiagramNode = {
 };
 
 const DB_PRIMARY_NODE: DiagramNode = {
+  implementationExamples: primaryExamples,
   id: 'db-primary',
   label: 'DB Primary',
   role: 'database',
@@ -194,6 +200,7 @@ const DB_PRIMARY_NODE: DiagramNode = {
 };
 
 const DB_REPLICA_NODE: DiagramNode = {
+  implementationExamples: replicaExamples,
   id: 'db-replica',
   label: 'DB Replica',
   role: 'database',

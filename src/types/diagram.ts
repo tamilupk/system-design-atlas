@@ -9,6 +9,15 @@ export interface NodeSpecification {
   readonly tradeoffs: readonly string[];
 }
 
+export type ImplementationTarget = 'tech' | 'aws' | 'gcp';
+
+export interface ImplementationExample {
+  readonly shortLabel: string;
+  readonly name: string;
+  readonly note: string;
+  readonly docsUrl: string;
+}
+
 export interface DiagramNode {
   readonly id: string;
   readonly label: string;
@@ -18,6 +27,7 @@ export interface DiagramNode {
   readonly conceptId?: string;
   readonly description?: string;
   readonly spec?: NodeSpecification;
+  readonly implementationExamples?: Partial<Record<ImplementationTarget, ImplementationExample>>;
 }
 
 export interface DiagramEdge {

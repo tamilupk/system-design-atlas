@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Check,
   Keyboard,
-  Github,
   NotebookPen,
   PanelRight,
   PanelLeft,
@@ -26,6 +25,7 @@ import { useToolbar } from './ToolbarContext';
 import type { ProgressState } from '@/features/progress/types';
 import type { ImportSummary } from '@/features/progress/yaml-transfer';
 import logoUrl from '@/assets/logo.svg';
+import githubMarkUrl from '@/assets/github-mark.png';
 import styles from './TopToolbar.module.css';
 import iconButtonStyles from '@/components/ui/IconButton.module.css';
 
@@ -222,7 +222,7 @@ export function TopToolbar() {
           className={`${iconButtonStyles.iconButton} ${iconButtonStyles.ghost} ${iconButtonStyles.md} ${styles.actionIconBtn}`}
         >
           <span className={iconButtonStyles.iconWrapper}>
-            <Github aria-hidden="true" />
+            <img src={githubMarkUrl} alt="" aria-hidden="true" className={styles.githubMark} />
           </span>
         </a>
         {lessonNav?.onOpenShortcuts && (

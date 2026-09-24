@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { DiagramState, DiagramNode as DiagramNodeType } from '@/types/diagram';
+import { ImplementationTarget, DiagramState, DiagramNode as DiagramNodeType } from '@/types/diagram';
 import { DiagramNode } from './DiagramNode';
 import { DiagramEdge } from './DiagramEdge';
 import { FlowControls } from './FlowControls';
@@ -46,6 +46,10 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
   children,
 }) => {
   const { nodes, edges, flowSequences } = diagramState;
+  const [implementationTarget, setImplementationTarget] = useState<ImplementationTarget | null>(null);
+  const implementationTargets = (['tech', 'aws', 'gcp'] as const).filter(provider =>
+    nodes.some(node => node.implementationExamples?.[provider]),
+  );
 
   const [selectedFlowId, setSelectedFlowId] = useState<string | undefined>(activeFlowSequenceId);
   const [zoom, setZoom] = useState(1);
@@ -243,7 +247,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
   }, [nodes, zoom, pan]);
 
   const Canvas = (
-    <div className={styles.svgWrapper}>
+    <div className={`${styles.svgWrapper} ${implementationTargets.length ? styles.withImplementationExamples : ''}`}>
       {flowSequences && flowSequences.length > 1 && (
         <div 
           className={styles.flowTabsFloating} 
@@ -333,6 +337,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
               <DiagramNode
                 key={node.id}
                 node={node}
+                implementationTarget={implementationTarget}
                 selected={isSelected}
                 highlighted={isHighlighted}
                 dimmed={isDimmed}
@@ -342,6 +347,24 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
           })}
         </g>
       </svg>
+
+      {implementationTargets.length > 0 && (
+        <div className={styles.implementationExamples} role="group" aria-label="Implementation examples">
+          <span>Examples</span>
+          {implementationTargets.map(provider => (
+            <button
+              key={provider}
+              type="button"
+              aria-label={`Show ${(provider === 'tech' ? 'Tech' : provider.toUpperCase())} examples`}
+              aria-pressed={implementationTarget === provider}
+              title={provider === 'tech' ? 'Cloud-agnostic implementation examples; inspect a component for details' : `Toggle ${provider.toUpperCase()} service examples; inspect a component for details`}
+              onClick={() => setImplementationTarget(current => current === provider ? null : provider)}
+            >
+              {(provider === 'tech' ? 'Tech' : provider.toUpperCase())}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Floating help tooltip icon in bottom-left */}
       <div className={styles.floatingHelp}>

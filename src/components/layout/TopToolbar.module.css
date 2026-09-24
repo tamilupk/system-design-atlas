@@ -371,3 +371,9 @@
     padding: 3px 5px;
   }
 }
+
+.githubMark {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

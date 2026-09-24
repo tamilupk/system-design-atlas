@@ -2,7 +2,9 @@ import type {
   DiagramNode, 
   DiagramEdge, 
   DiagramNodeRole, 
-  NodeSpecification, 
+  NodeSpecification,
+  ImplementationTarget,
+  ImplementationExample,
   FlowSequence, 
   FlowEvent, 
   DiagramState 
@@ -20,6 +22,7 @@ export function createNode(params: {
   conceptId?: string;
   description?: string;
   spec?: NodeSpecification;
+  implementationExamples?: Partial<Record<ImplementationTarget, ImplementationExample>>;
 }): DiagramNode {
   return params;
 }
