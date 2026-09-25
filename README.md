@@ -8,8 +8,8 @@
 An interactive, decision-driven system design curriculum and architecture simulator built for engineers with 10+ years of experience preparing for senior, staff, and principal technical interviews at tier-one tech companies.
 
 **[Explore System Design Atlas →](https://systemdesign.tamilarasu.dev/)**
+<img width="1914" height="990" alt="image" src="https://github.com/user-attachments/assets/b3e97af6-abd3-449d-8f73-faa82c98ace8" />
 
-[![Real-Time Chat recap showing the architecture diagram, gap-recovery flow, and Tech implementation examples](docs/images/chat-recap.png)](https://systemdesign.tamilarasu.dev/archetypes/chat/steps/recap)
 
 ---
 
