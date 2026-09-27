@@ -153,7 +153,7 @@ const DecisionChallengeView: React.FC<DecisionChallengeViewProps> = ({ challenge
           </div>
 
           <div className={styles.metricBox}>
-            <span className={styles.metricTitle}>Simulation Under Production Load:</span>
+            <span className={styles.metricTitle}>Expected Behavior:</span>
             <span className={styles.metricValue}>{selectedOption.simulationResult.metric}</span>
             <p className={styles.metricOutcome}>{selectedOption.simulationResult.outcome}</p>
             <p className={styles.metricOutcome}><strong>System Impact:</strong> {selectedOption.simulationResult.impact}</p>

@@ -129,6 +129,8 @@ Diagrams are hand-authored data rendered as inline SVG by React components in `s
 - `DiagramContextHUD` — contextual overlay for the selected node/flow.
 - `NodeSpecPanel` — the inspector shown when a node is selected.
 
+**Touch navigation:** The SVG supports single-finger background panning and two-finger pinch zoom (0.4×–3×), anchored at the moving finger midpoint. Lifting a finger resumes panning without a jump; canceled gestures are cleared. Pinches may begin over nodes and do not trigger node selection. Single node taps, mouse dragging, trackpad/wheel zoom, and Fit to panel retain their existing behavior. Touch handling is scoped to the SVG so surrounding page scrolling and controls remain available.
+
 **Playback behavior:** when a sequence is playing, a `setInterval` advances one flow event every **1500 ms** and stops at the end of the sequence. A `flowRunId` counter forces a clean restart when the user replays or switches sequences.
 
 **Flow tab bar:** the sequence selector is a floating pill bar (`height: 28px`) pinned to the top-left of the canvas. It scrolls horizontally when sequences overflow, and its scrollbar is suppressed across all engines (`scrollbar-width`, `-ms-overflow-style`, and `::-webkit-scrollbar` set to `display: none !important`) so the bar reads as a control strip rather than a scrollable region.
@@ -142,6 +144,8 @@ Chapter lengths are variable: URL Shortener has 9 steps and Real-Time Chat has 1
 - **Splitter:** the explanation panel width is clamped to **260–750 px** (default 340), further capped at `window.innerWidth - 380` so the diagram always keeps usable space. The width persists to `localStorage` under `system-design-atlas-explanation-width`; double-click resets to the default. The handle is keyboard-operable and exposes `role="separator"` with `aria-valuemin`/`aria-valuemax`/`aria-valuenow`.
 - **Keyboard shortcuts** (suppressed while focus is in an input, textarea, or select): `←`/`→` previous/next step, `M` or `C` toggle step completion, `B` toggle the chapter outline sidebar, `N` toggle the notes panel, `?` toggle the shortcut help, `Escape` close the inspector then clear the node selection.
 - **Completion:** marking a step complete dispatches `COMPLETE_STEP`; the toggle is reversible via `UNCOMPLETE_STEP`. Progress percentages are always derived from the current lesson definition, so unknown or removed step IDs never count toward completion.
+
+Challenge evaluations display authored outcomes under **Expected Behavior**; selecting an option does not run a load simulation or produce measured results.
 
 ## Chat Assistance
 

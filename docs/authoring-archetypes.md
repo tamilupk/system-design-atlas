@@ -57,13 +57,16 @@ Generate the complete, mathematically grounded curriculum specification followin
 4. Realistic Distributed Failure Modes: Include split-brain, network partitions, replica lag, thundering herds, hot partitions, and cache invalidation races — where they actually apply to this system.
 5. Progressive Disclosure: Choose the step count from the learning objectives, not a fixed quota. A focused system may need about 6 steps; a broader system may need 10–15 or more. These are examples, not bounds. Start with the simplest correct baseline and add a step when it introduces a distinct decision, invariant, failure mode, or exercise. Merge shallow steps; split overloaded ones. Explain why the chosen boundaries fit this system.
 6. Architecture Follows the System: The step trajectory below is a **suggested outline**, not a rule. Do not add Redis, an API gateway, sharding, or read replicas just because the outline mentions them. Messaging, collaboration, stream processing, storage, and GenAI systems each deserve their own middle steps (ordering guarantees, presence and CRDTs, watermarks and backpressure, compaction and repair, token budgets and model routing). Keep the consistent shape — requirements → API/data → baseline → domain core → scale → reliability → trade-offs → recap — and vary the substance.
-7. Honesty About Numbers: Label simulated or back-of-envelope results as illustrative (for example "Illustrative estimate, not a measured benchmark"). Never present a hard-coded latency or cost figure as a measurement. Support strong claims with mechanisms and primary sources; qualifiers such as "typically" are not evidence. Never invent operational experience or company adoption. Do not add component p99 values and call the sum an end-to-end p99.
-8. No Universal Answers: Distinguish what is preferred **for this scenario** from what is universally correct. A choice that wins at 100k QPS may be wrong at 1k QPS; say so.
-9. Concepts: Reuse the shared concepts already registered in `src/concepts/registry.ts` ("cache", "database-index", "load-balancer", "idempotency", "message-ordering", "transactional-outbox"; verify the current registry) where they genuinely apply. If the chapter needs a new one, define it in Section E as a **shared** concept (reusable explanation, trade-offs, failure modes) plus a **chapter-specific** context entry (how it behaves here, example data, edge cases). Never fold chapter-specific detail into the shared explanation.
+7. Honesty About Numbers & Expected Behavior: Label back-of-envelope derivations and hypothetical scenarios as illustrative (for example "Illustrative estimate, not a measured benchmark"). Ground numbers in your Section B calculations; never invent unmeasured microsecond latency or fake percentage benchmarks (e.g. "99.8% accuracy"). Challenge metrics render under "Expected Behavior" in the UI; describe qualitative architectural outcomes and failure limits. Support strong claims with mechanisms and primary sources; qualifiers such as "typically" are not evidence. Never invent operational experience or company adoption. Do not add component p99 values and call the sum an end-to-end p99.
+8. Authentic Trade-offs ("No Free Lunches"): Never present an architectural pattern as having zero downside. Caching trades freshness and analytics visibility for egress and latency; asynchronous message publishing trades durability/data-loss risk under backpressure for critical-path decoupling; sharding trades cross-partition query capability for horizontal scale. Every optimization must name the exact invariant, guarantee, or observability being compromised.
+9. Cache Boundary Rigor: Distinguish client/browser caching (`Cache-Control`), edge/CDN caching, and origin datastore/cache (Redis). Invalidation at origin (e.g. Redis `DEL`) never purges active client browser caches. Acknowledge that client-side caching hides repeat requests from origin click-stream analytics unless client-side beaconing is used.
+10. Protocol & Specification Precision: Cite official specifications accurately (e.g. RFC 9110 for HTTP semantics). Distinguish historical user-agent allowances (e.g. 301/302 may rewrite POST to GET) from strict method-preservation mandates (307/308). Do not assume downstream intermediaries cache responses without explicit headers.
+11. No Universal Answers: Distinguish what is preferred **for this scenario** from what is universally correct. A choice that wins at 100k QPS may be wrong at 1k QPS; say so.
+12. Concepts: Reuse the shared concepts already registered in `src/concepts/registry.ts` ("cache", "database-index", "load-balancer", "idempotency", "message-ordering", "transactional-outbox"; verify the current registry) where they genuinely apply. If the chapter needs a new one, define it in Section E as a **shared** concept (reusable explanation, trade-offs, failure modes) plus a **chapter-specific** context entry (how it behaves here, example data, edge cases). Never fold chapter-specific detail into the shared explanation.
 
-10. Engagement: Open substantial steps with a concrete decision, incident, or prediction. Explain the mechanism, let the reader reason before revealing the answer, and return to the scenario. Use plausible competing options, not strawmen; end with a defensible decision and its cost. Avoid filler, vendor-name trivia, and splitting content merely to create more pages.
-11. Staff-level review: For every step, challenge the invariants, state ownership, acknowledgement boundary, failure assumptions, recovery path, and operational cost where applicable. Distinguish transport guarantees from application guarantees. Include authorization and data lifecycle implications where relevant. Review the complete trajectory for missing prerequisites, duplicated explanations, and unsupported promises.
-12. Evidence: Check current official documentation, protocol specifications, and relevant first-party engineering case studies for niche or changing claims. Link sources near substantive claims, distinguish our illustrative design from a source company's architecture, and explain where the design stops applying. Make changes only when this review exposes a real gap.
+13. Engagement: Open substantial steps with a concrete decision, incident, or prediction. Explain the mechanism, let the reader reason before revealing the answer, and return to the scenario. Use plausible competing options, not strawmen; end with a defensible decision and its cost. Avoid filler, vendor-name trivia, and splitting content merely to create more pages.
+14. Staff-level review: For every step, challenge the invariants, state ownership, acknowledgement boundary, failure assumptions, recovery path, and operational cost where applicable. Distinguish transport guarantees from application guarantees. Include authorization and data lifecycle implications where relevant. Review the complete trajectory for missing prerequisites, duplicated explanations, and unsupported promises.
+15. Evidence: Check current official documentation, protocol specifications, and relevant first-party engineering case studies for niche or changing claims. Link sources near substantive claims, distinguish our illustrative design from a source company's architecture, and explain where the design stops applying. Make changes only when this review exposes a real gap.
 
 ### Produce your output structured into the following exact sections:
 
@@ -150,10 +153,10 @@ Define decision challenges at consequential architectural forks (often 1–2 ini
   * title: Option title
   * description: Technical implementation description
   * isOptimal: boolean (true for exactly one option)
-  * simulationResult:
-    - metric: e.g. "p99 Latency: 2.1ms | Cross-AZ Network Egress: $4,200/mo"
-    - outcome: What happens to the system under 100k QPS stress
-    - impact: Business and architectural impact
+  * simulationResult (rendered under "Expected Behavior" in the UI):
+    - metric: Qualitative architectural behavior or capacity-derived calculation under load (e.g. "Illustrative scenario — 1 original + 2 retries = 3 message rows" or "Illustrative expectation: reduces repeat requests during TTL, but cached visits bypass origin click analytics"). Ground numbers in your Section B calculations; never invent unmeasured microsecond latency or fake percentage benchmarks (e.g. "99.8% accuracy").
+    - outcome: What happens to the system under stated peak stress or failure conditions
+    - impact: Business, data integrity, and architectural impact
   * seniorRationale: The senior FAANG rationale explaining why this option is optimal or why it fails at scale
   * tradeOffSummary: "Pros: ... Cons: ..."
 
@@ -179,10 +182,10 @@ Never put chapter-specific detail into E1, and never duplicate the generic expla
 
 #### SECTION F: Step-by-Step Explanatory Markdown Content
 For each step, provide:
-- Main conceptual explanation with mathematical calculations
-- Trade-off comparison tables (Aspect, Pros, Cons)
+- Main conceptual explanation with mathematical calculations (deriving writes/sec, peak reads, RAM working sets, network egress, and storage growth from stated assumptions)
+- Trade-off comparison tables (Aspect, Pros, Cons) — every pro must be paired with an honest operational, consistency, or observability con (no "free lunches"; caching sacrifices freshness/analytics, async publishing sacrifices durable delivery under backpressure)
 - Code snippets (e.g. Lua scripts for Redis atomic ops, SQL schemas, API definitions)
-- Senior engineering callout insights
+- Senior engineering callout insights (distinguishing production reality from simplistic textbook assumptions)
 - Follow-up interview probe questions, including adversarial failure/recovery cases and a recap that reconstructs the design from its invariants
 ````
 
@@ -794,7 +797,10 @@ npm run test:e2e    # browser regression coverage
 | 8 | **Shared Primitives** | Compose steps from `@/components/lesson/StepComponents` (`StepContent`, `StepSection`, `Paragraph`, `List`, `InlineCode`, `ConceptLink`, `Callout`, `CardGrid`, `Card`, `CodeBlock`, `TradeoffTable`, `DecisionChallenge`). Do NOT copy another chapter's CSS or components; put chapter-specific widgets in `<id>/components/`. |
 | 9 | **Manifest Registration** | Available chapters MUST have an entry in `src/archetypes/step-manifests.ts`; planned chapters MUST NOT. |
 | 10 | **README Synchronization** | The Available Content row must match the chapter metadata/catalog and actual manifest step count. Update it when publishing or changing the trajectory; never leave a completed chapter marked Planned. |
-| 11 | **Honest Numbers** | Label illustrative/simulated results as illustrative. Never present hard-coded latency or cost as measured. |
+| 11 | **Honest Numbers & Derivations** | Mathematical scale estimates must show explicit derivations and stated assumptions. Label illustrative scenarios and back-of-envelope estimates as illustrative; never invent unmeasured latency or fake percentage benchmarks (e.g. "99.8% accuracy"). |
+| 12 | **Authentic Trade-offs ("No Free Lunches")** | Every optimization (caching, queues, sharding) MUST state what it sacrifices (freshness, durable delivery, observability, or operational complexity). Never claim an optimization solves a problem without naming the compromised guarantee. |
+| 13 | **Cache Tier Rigor** | Clearly distinguish browser client cache (`Cache-Control`), shared CDN cache, and server-side cache (Redis). Origin invalidation cannot purge client browser caches; client caching hides repeat requests from server click-stream analytics. |
+| 14 | **Challenge Expected Behavior** | In `challenges.ts`, author `simulationResult` to describe the expected qualitative architectural outcome and failure boundaries (rendered under "Expected Behavior" in the UI), tied to the system's capacity calculations rather than simulated micro-benchmarks. |
 
 ### Stable IDs and saved progress
 These IDs are persisted in `localStorage` and must never change once a chapter ships — renaming one silently orphans reader progress:

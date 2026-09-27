@@ -21,34 +21,38 @@ export const TradeoffsStep: FC<StepComponentProps> = () => {
           items={[
             {
               aspect: '301 / 308 Permanent Redirect',
-              pros: 'Clients and CDNs cache destination indefinitely; eliminates subsequent server round-trips for repeat visitors.',
-              cons: 'Origin cannot reliably revoke/expire links or track repeat clicks once cached in browser. (308 preserves method; 301 rewrites to GET).'
+              pros: 'Browsers may cache the destination; cache hits eliminate server round-trips for repeat visitors.',
+              cons: 'Origin cannot reliably revoke/expire links or track repeat clicks once cached in browser. (308 preserves method; 301 may change POST to GET).'
             },
             {
               aspect: '302 / 307 Temporary Redirect',
-              pros: 'Default behavior indicates temporary relocation. (307 preserves request method; 302 rewrites to GET).',
+              pros: 'Default behavior indicates temporary relocation. (307 preserves request method; 302 may change POST to GET).',
               cons: 'A 302 does NOT guarantee origin hits if downstream proxies or browser cache headers exist. Origin must explicitly set Cache-Control headers.'
             },
             {
-              aspect: 'Bounded Client Cache (307 + private max-age=300)',
-              pros: 'Absorbs rapid duplicate clicks during viral surges (5-min client cache) while preserving analytics accuracy and revocation control.',
-              cons: 'Slight delay (up to max-age) before revocations take effect on active user devices.'
+              aspect: 'Bounded Client Cache (e.g. 307 + private, max-age=300)',
+              pros: 'Reduces repeat-request latency and server load when a short delay in link changes is acceptable.',
+              cons: 'Cached clicks bypass server analytics; revocations and edits may be delayed until the cached redirect expires.'
             }
           ]}
         />
+        <p className={styles.paragraph}>
+          Choose browser TTLs to match acceptable update delays and analytics gaps; five minutes is an example, not a default.
+          Redis reduces database reads. Use <code className={styles.inlineCode}>no-store</code> when redirect responses must not be reused.
+        </p>
       </div>
 
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Analytics Ingestion: Critical Path Isolation</h3>
         <p className={styles.paragraph}>
-          Updating a database column like <code className={styles.inlineCode}>click_count = click_count + 1</code> synchronously during a redirect is a fatal architecture flaw for high-scale systems: it turns read traffic into row-locked write transactions.
+          Updating a database column like <code className={styles.inlineCode}>click_count = click_count + 1</code> synchronously during a redirect adds a database write to the request path. On viral links, concurrent updates to the same row can create lock contention.
         </p>
         <ul className={styles.list}>
           <li>
-            <strong>Inline Database Write:</strong> High latency (5–30ms added to redirect), severe lock contention on viral links, and database failure brings down redirects.
+            <strong>Inline Database Write:</strong> Adds database round-trip and write latency. Contention grows on hot counters; write failures can delay or fail redirects unless handled separately.
           </li>
           <li>
-            <strong>Asynchronous Event Streaming (Kafka / Kinesis):</strong> The app server emits an in-memory event to a message bus in &lt;1ms and immediately redirects the user. Consumer workers batch-aggregate click metrics and write to an OLAP store (e.g. ClickHouse, Snowflake) without impacting the critical path.
+            <strong>Asynchronous Event Streaming (Kafka / Kinesis):</strong> The app server publishes click events for workers to batch-aggregate into an OLAP store (e.g. ClickHouse, Snowflake). Background publishing favors redirect latency and availability but can lose buffered events; waiting for durable acknowledgement adds latency and a dependency.
           </li>
         </ul>
       </div>
