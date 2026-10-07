@@ -26,8 +26,8 @@ interface RouteMeta {
   canonicalUrl: string;
   jsonLd: object;
   fallbackHtml: string;
-  changefreq?: string;
-  priority?: string;
+  /** Exclude entry routes that redirect to a concrete lesson after loading. */
+  includeInSitemap?: boolean;
   /**
    * Extra stylesheets to link from `<head>`. Lesson pages server-render the
    * real step components, whose CSS-module classes live in lazily-loaded
@@ -285,8 +285,6 @@ export async function generateRoutes(sources: ChapterSources = {
     title: 'System Design Atlas — Senior Engineering System Design Guide',
     description: 'Learn system design through interactive lessons, real-time architecture diagrams, and senior engineering trade-offs. Master Tier-1 interview archetypes.',
     canonicalUrl: `${BASE_URL}/`,
-    changefreq: 'daily',
-    priority: '1.0',
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': [
@@ -365,11 +363,10 @@ export async function generateRoutes(sources: ChapterSources = {
 
     routes.push({
       path: chapterPath,
+      includeInSitemap: false,
       title: `${metadata.title} System Design Architecture — System Design Atlas`,
       description: metadata.description,
       canonicalUrl: `${BASE_URL}/${chapterPath}`,
-      changefreq: 'weekly',
-      priority: '0.9',
       jsonLd: {
         '@context': 'https://schema.org',
         '@graph': [
@@ -453,8 +450,6 @@ export async function generateRoutes(sources: ChapterSources = {
         title: `${step.title} | ${metadata.title} System Design — System Design Atlas`,
         description: `Step ${idx + 1} of ${lesson.steps.length}: ${step.objective}. Senior system design engineering considerations, architectural trade-offs, and failure mode analysis.`,
         canonicalUrl: `${BASE_URL}/${chapterPath}/steps/${step.id}`,
-        changefreq: 'weekly',
-        priority: '0.8',
         stylesheets,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -570,8 +565,6 @@ export async function generateRoutes(sources: ChapterSources = {
       title: `${concept.title} Architecture Guide | System Design Atlas`,
       description: concept.summary,
       canonicalUrl: `${BASE_URL}/concepts/${concept.id}`,
-      changefreq: 'monthly',
-      priority: '0.8',
       jsonLd: {
         '@context': 'https://schema.org',
         '@graph': [
@@ -598,25 +591,34 @@ export async function generateRoutes(sources: ChapterSources = {
   return routes;
 }
 
-function generateSitemap(routes: RouteMeta[]): string {
-  const today = new Date().toISOString().split('T')[0];
-  const entries = routes.map(r => `  <url>
-    <loc>${r.canonicalUrl}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>${r.changefreq || 'weekly'}</changefreq>
-    <priority>${r.priority || '0.7'}</priority>
+export function generateSitemap(routes: readonly Pick<RouteMeta, 'canonicalUrl' | 'includeInSitemap'>[]): string {
+  const urls = routes.filter(route => route.includeInSitemap !== false).map(route => {
+    const url = new URL(route.canonicalUrl);
+    if (url.origin !== BASE_URL || url.search || url.hash || url.username || url.password) {
+      throw new Error(`Invalid sitemap canonical URL: ${route.canonicalUrl}`);
+    }
+    return url.href;
+  });
+  const entries = [...new Set(urls)].sort().map(url => `  <url>
+    <loc>${escapeHtml(url)}</loc>
   </url>`).join('\n');
 
+  // Do not invent lastmod from build time. Add it only with trustworthy content dates.
+  // Google ignores changefreq and priority, so neither is emitted.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries}
-</urlset>`;
+</urlset>
+`;
 }
 
-function generateRobotsTxt(): string {
-  return `User-agent: *
+export function generateRobotsTxt(): string {
+  return `# System Design Atlas — public curriculum and rendering assets are crawlable.
+# Planned chapters and redirect-only entry URLs are omitted from the sitemap.
+User-agent: *
 Allow: /
 
+# Absolute production URL; regenerated with the published curriculum on every build.
 Sitemap: ${BASE_URL}/sitemap.xml
 `;
 }
@@ -649,7 +651,7 @@ export async function prerender() {
   // Generate sitemap.xml
   const sitemap = generateSitemap(routes);
   fs.writeFileSync(path.join(DIST_DIR, 'sitemap.xml'), sitemap, 'utf-8');
-  console.log(`Generated sitemap.xml with ${routes.length} URLs`);
+  console.log(`Generated sitemap.xml with ${[...sitemap.matchAll(/<loc>/g)].length} canonical URLs`);
 
   // Generate robots.txt
   const robots = generateRobotsTxt();

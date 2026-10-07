@@ -111,10 +111,18 @@ Progress is saved in `localStorage` under the versioned key `system-design-atlas
 - Emits one `index.html` per route (currently 45: home, three chapter overviews, their 35 steps, and the 6 concept pages) into path-shaped directories.
 - Injects per-route `<title>`, meta description, canonical URL, Open Graph tags, and `TechArticle` + `BreadcrumbList` JSON-LD.
 - Injects a static `fallbackHtml` payload inside `#root` so the page has readable content before hydration.
-- Generates `sitemap.xml` (with `changefreq`/`priority` per route) and `robots.txt`.
+- Generates UTF-8 `dist/sitemap.xml` with absolute HTTPS canonical URLs for the home page, every available lesson step, and shared concepts (currently 42 URLs). It excludes planned chapters, chapter entry URLs that redirect to a step, query/fragment variants, and the 404 fallback. Entries are deduplicated, sorted, and XML-escaped; foreign-origin or query/fragment URLs fail generation.
+- Generates `dist/robots.txt` (plural **robots**) at the site root. `User-agent: *` and `Allow: /` keep public pages and JS/CSS assets crawlable; the `Sitemap` directive points to `https://systemdesign.tamilarasu.dev/sitemap.xml`.
+- Omits `lastmod` until reliable per-page content modification dates exist; build time is not a content update. Omits `priority` and `changefreq`, which Google ignores. See [Google’s sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
 - Copies the shell to `404.html` as the SPA fallback for static hosts.
 
 Routes are derived from `archetypeCatalog`, the registry, the lesson definitions, and the concept registry, so new content is picked up automatically. The generator is chapter-agnostic: it iterates every `available` catalog entry, loads it through the registry, and emits its overview, step, and concept pages — adding a chapter to the catalog and registry is enough, the script never needs editing.
+
+### Publishing the crawl files
+
+Deploy the complete `dist/` directory after `npm run build`. Serve `/sitemap.xml` as XML and `/robots.txt` as plain text with HTTP 200; static files must take precedence over the SPA fallback. These files are build artifacts, not manually maintained copies in `public/`, and the Vite development server does not generate them. Use `npm run preview -- --port 4173` to inspect the production build locally.
+
+After deployment, verify the two root URLs return the files rather than the application HTML. In the verified Google Search Console property for `https://systemdesign.tamilarasu.dev`, submit `sitemap.xml` through the Sitemaps report and monitor processing/indexing status. The robots directive also enables discovery; neither discovery nor submission guarantees indexing. No Search Console verification token is bundled or fabricated. Keep the sitemap domain and canonical tags aligned if the public hostname changes.
 
 ## Diagram System
 
