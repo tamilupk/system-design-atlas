@@ -43,7 +43,7 @@ Fresh checkout: use Node.js 22 and `npm ci`. Install the browser once with `npx 
 Copy and paste the prompt below into **ChatGPT** or **Claude**. Replace `[SYSTEM NAME]` (e.g. `Distributed Rate Limiter`, `Notification Service`, `Distributed Key-Value Store`, `Real-Time Chat System`).
 
 ````markdown
-You are a Principal Distributed Systems Engineer at a Tier-1 tech company (FAANG) and a top-tier System Design Interviewer.
+You are a Principal Distributed Systems Engineer at a Tier-1 tech company and a top-tier System Design Interviewer.
 
 I want to create a new interactive chapter for the "System Design Atlas" web app.
 The system to design is: [SYSTEM NAME]
@@ -147,7 +147,7 @@ Define decision challenges at consequential architectural forks (often 1–2 ini
 - title: Dilemma title (e.g. "Architectural Dilemma: Centralized Redis vs Local Memory Rate Limiting")
 - category: Category name (e.g. "Concurrency & Storage")
 - scenario: Realistic high-throughput scenario description
-- interviewContext: What FAANG interviewers evaluate with this question
+- interviewContext: What Tier-1 interviewers evaluate with this question
 - options: 3-4 options, where EXACTLY ONE has isOptimal: true:
   * id: string (e.g. "opt-redis", "opt-local", "opt-hybrid")
   * title: Option title
@@ -157,7 +157,7 @@ Define decision challenges at consequential architectural forks (often 1–2 ini
     - metric: Qualitative architectural behavior or capacity-derived calculation under load (e.g. "Illustrative scenario — 1 original + 2 retries = 3 message rows" or "Illustrative expectation: reduces repeat requests during TTL, but cached visits bypass origin click analytics"). Ground numbers in your Section B calculations; never invent unmeasured microsecond latency or fake percentage benchmarks (e.g. "99.8% accuracy").
     - outcome: What happens to the system under stated peak stress or failure conditions
     - impact: Business, data integrity, and architectural impact
-  * seniorRationale: The senior FAANG rationale explaining why this option is optimal or why it fails at scale
+  * seniorRationale: The senior rationale explaining why this option is optimal or why it fails at scale
   * tradeOffSummary: "Pros: ... Cons: ..."
 
 #### SECTION E: Concepts

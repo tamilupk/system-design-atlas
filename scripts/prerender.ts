@@ -237,7 +237,7 @@ export async function generateRoutes(sources: ChapterSources = {
       <header>
         <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;">System Design Atlas</h1>
         <p style="font-size: 1.125rem; color: #555; line-height: 1.6;">
-          Interactive, production-grade system design curriculum for senior engineers (10+ YOE) targeting FAANG and tier-one product companies.
+          Interactive, production-grade system design curriculum for senior engineers (10+ YOE) targeting tier-one product companies.
         </p>
       </header>
 
@@ -283,7 +283,7 @@ export async function generateRoutes(sources: ChapterSources = {
   routes.push({
     path: '',
     title: 'System Design Atlas — Senior Engineering System Design Guide',
-    description: 'Learn system design through interactive lessons, real-time architecture diagrams, and senior engineering trade-offs. Master FAANG/Tier-1 interview archetypes.',
+    description: 'Learn system design through interactive lessons, real-time architecture diagrams, and senior engineering trade-offs. Master Tier-1 interview archetypes.',
     canonicalUrl: `${BASE_URL}/`,
     changefreq: 'daily',
     priority: '1.0',
@@ -295,7 +295,7 @@ export async function generateRoutes(sources: ChapterSources = {
           '@id': `${BASE_URL}/#website`,
           url: `${BASE_URL}/`,
           name: 'System Design Atlas',
-          description: 'Interactive system design curriculum for senior engineers targeting FAANG/Tier-1 interviews.',
+          description: 'Interactive system design curriculum for senior engineers targeting Tier-1 interviews.',
           publisher: {
             '@type': 'Organization',
             name: 'System Design Atlas'

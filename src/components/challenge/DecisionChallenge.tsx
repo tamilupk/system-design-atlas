@@ -160,7 +160,7 @@ const DecisionChallengeView: React.FC<DecisionChallengeViewProps> = ({ challenge
           </div>
 
           <div className={styles.rationaleSection}>
-            <span className={styles.rationaleTitle}>Senior FAANG Engineering Rationale:</span>
+            <span className={styles.rationaleTitle}>Senior Engineering Rationale:</span>
             <p className={styles.rationaleText}>{selectedOption.seniorRationale}</p>
           </div>
 

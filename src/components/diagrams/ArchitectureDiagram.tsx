@@ -331,7 +331,8 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
 
     nodes.forEach(n => {
       minX = Math.min(minX, n.x - 80);
-      minY = Math.min(minY, n.y - 65);
+      // Reserve drawing space below the floating flow and fit controls.
+      minY = Math.min(minY, n.y - 105);
       maxX = Math.max(maxX, n.x + 80);
       maxY = Math.max(maxY, n.y + 65);
     });

@@ -7,7 +7,7 @@ const viewBox = (svg: Locator) => svg.evaluate(el => {
   return { x: box.x, y: box.y, width: box.width, height: box.height };
 });
 
-for (const route of ['url-shortener/steps/tradeoffs', 'chat/steps/resilience']) {
+for (const route of ['url-shortener/steps/tradeoffs', 'chat/steps/resilience', 'ticket-booking/steps/regional-failure']) {
   test(`touch pinch, pan, cancellation, and existing controls: ${route}`, async ({ page, context }) => {
     await page.goto(`/archetypes/${route}`);
     const svg = page.getByRole('img', { name: 'System architecture diagram', exact: true });
@@ -55,7 +55,8 @@ for (const route of ['url-shortener/steps/tradeoffs', 'chat/steps/resilience']) 
     // Removing a finger preserves the view, then allows one-finger panning.
     const beforeLift = await viewBox(svg);
     const remaining = { id: 1, x: x - 35, y: y + 20 };
-    await touch('touchEnd', [remaining]);
+    // CDP touchEnd identifies the released contact, not the survivor.
+    await touch('touchEnd', [{ id: 2, x: x + 35, y: y + 20 }]);
     expect(await viewBox(svg)).toEqual(beforeLift);
     await touch('touchMove', [{ ...remaining, x: remaining.x + 20 }]);
     await expect.poll(async () => (await viewBox(svg)).x).toBeLessThan(beforeLift.x);
@@ -97,9 +98,11 @@ for (const route of ['url-shortener/steps/tradeoffs', 'chat/steps/resilience']) 
     await page.mouse.wheel(0, -100);
     await expect.poll(async () => (await viewBox(svg)).width).toBeLessThan(original.width);
     await page.getByRole('button', { name: 'Fit to panel', exact: true }).click();
-    await page.mouse.move(rect.x + 12, rect.y + rect.height / 2);
+    // Pan from empty lower canvas space, away from left-edge nodes.
+    await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height * 0.9);
     await page.mouse.down();
-    await page.mouse.move(rect.x + 32, rect.y + rect.height / 2 + 10);
+    await expect(svg).toHaveClass(/svgPanning/);
+    await page.mouse.move(rect.x + rect.width / 2 + 20, rect.y + rect.height * 0.9 + 10);
     await page.mouse.up();
     await expect.poll(async () => (await viewBox(svg)).x).not.toBe(original.x);
     await page.getByRole('button', { name: 'Fit to panel', exact: true }).click();

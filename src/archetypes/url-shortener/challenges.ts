@@ -6,7 +6,7 @@ export const urlShortenerChallenges: Record<string, ChallengeDefinition> = {
     title: 'Architectural Dilemma: Short-Code Generation at Scale',
     category: 'ID Generation',
     scenario: 'Your system must handle 100 million short URL creations per month (approx. 40 creates/sec average, 500/sec peak). Competitors must not be able to crawl or guess short links by incrementing IDs. Database insertion locality must remain high.',
-    interviewContext: 'FAANG interviewers evaluate whether you understand the collision curve (Birthday Paradox), B-Tree indexing locality, and security implications of enumerable sequential keys.',
+    interviewContext: 'Tier-1 interviewers evaluate whether you understand the collision curve (Birthday Paradox), B-Tree indexing locality, and security implications of enumerable sequential keys.',
     options: [
       {
         id: 'opt-random',
@@ -117,7 +117,7 @@ export const urlShortenerChallenges: Record<string, ChallengeDefinition> = {
     title: 'Architectural Dilemma: Read-After-Write Consistency under DB Lag',
     scenario: 'A user creates a short link `https://tiny.url/launch` on social media and immediately clicks it to test. The redirect query misses the cache and hits a Read Replica experiencing 80ms of replication lag. The replica returns row-not-found, serving an HTTP 404 to the creator.',
     category: 'Database Replication',
-    interviewContext: 'FAANG system design interviews rigorously test eventual consistency and read-your-own-writes guarantees. How do you prevent fresh writes from appearing lost without degrading write throughput?',
+    interviewContext: 'Tier-1 system design interviews rigorously test eventual consistency and read-your-own-writes guarantees. How do you prevent fresh writes from appearing lost without degrading write throughput?',
     options: [
       {
         id: 'opt-hybrid-routing',

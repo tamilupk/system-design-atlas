@@ -1,0 +1,13 @@
+import { StepContent, StepSection, Paragraph, Callout } from '@/components/lesson/StepComponents';
+
+export function RecapStep() {
+ return (<StepContent>
+<Callout label="The decision">{"A staff engineer asks you to erase every box and rebuild from the guarantees. Start with the two buyers competing for the last two seats, then explain each boundary you add."}</Callout>
+<StepSection title="Reconstruct the system"><Paragraph>{"A public map suggests seats. Admission grants permission to attempt. The event writer atomically holds the group and records retry identity. Checkout persists payment intent while retaining inventory. Workers and verified callbacks converge financial state. Confirmation atomically sells seats and schedules issuance; closure instead releases them and retains compensation obligations."}</Paragraph></StepSection>
+<StepSection title="Name every authority"><Paragraph>{"Inventory transactions decide ownership. Database time under the hold lock decides checkout eligibility. The provider determines payment outcome. The booking ledger decides whether that outcome can still confirm or must refund. The cluster’s fencing mechanism decides who may write. Cached maps, queue tokens, browser timers, and callback arrival order decide none of these."}</Paragraph></StepSection>
+<StepSection title="Adversarial review"><Paragraph>{"Prove why a stale expiry worker cannot release a new hold. Explain what the customer sees after a lost checkout response. Derive how long a payment backlog takes to drain. Defend the event partition under a hot concert. Refuse unsafe promotion when regional history is unknown. Explain which privacy and retention choices remain business decisions."}</Paragraph></StepSection>
+<StepSection title="What to validate before production"><Paragraph>{"Benchmark realistic seat skew and lock queues, test the chosen provider’s deduplication and refund behavior, verify durability and fencing with fault injection, and rehearse restore and reconciliation. Our numbers are illustrative inputs. These pages teach a design and its proof obligations, not a running ticket service or a measured capacity claim."}</Paragraph></StepSection>
+<Callout label="Our choice and its cost">{"An excellent answer is not the longest component list. It is a defensible chain from product promise to state transition, failure behavior, recovery, and cost."}</Callout>
+<StepSection title="Defend the design"><Paragraph>{"Change one assumption: payment resolution can take two days. Would you hold the seat, delay payment initiation, or accept a refund-based outcome? Defend the customer experience."}</Paragraph></StepSection>
+</StepContent>);
+}

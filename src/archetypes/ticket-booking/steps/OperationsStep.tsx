@@ -1,0 +1,13 @@
+import { StepContent, StepSection, Paragraph, Callout } from '@/components/lesson/StepComponents';
+
+export function OperationsStep() {
+ return (<StepContent>
+<Callout label="The decision">{"The payment provider recovers after ten minutes. All workers retry together, overwhelm it again, and keep inventory quarantined. Recovery is its own workload."}</Callout>
+<StepSection title="Backlog arithmetic"><Paragraph>{"Illustrative accepted payment intent rate: 100/s for a 600-second outage creates 60,000 unresolved operations if admission remains open. With 300/s recovery service and 100/s new work, net drain is 200/s: 60,000 ÷ 200 = 300 seconds. If service is no faster than arrival, the queue never drains. Real admission should drop as unresolved work and the 15-minute deadline approach."}</Paragraph></StepSection>
+<StepSection title="Measure invariants and customer harm"><Paragraph>{"Track overlapping seat ownership, confirmed bookings without matching successful payment, aged unknown charges, refund age, issuance lag, and expiry lag. Separate sold-out conflicts from infrastructure errors. Watch per-event lock waits and aborts, oldest outbox/inbox age, webhook rejection rate, and admission fairness cohorts. Trace operation IDs across services without logging payment credentials."}</Paragraph></StepSection>
+<StepSection title="Storage and lifecycle"><Paragraph>{"Illustrative volume: 100 events/day × 25,000 orders = 2.5M orders/day. At 2 KB/order, that is 5 GB/day logical. A 90-day hot tier is 450 GB; a one-year archive is 1.825 TB before indexes, replicas, audit events, backups, and hold attempts. With a 1.5× row/index allowance and three copies, hot capacity is 2.025 TB. Retention requires business and jurisdiction review, not an arbitrary forever policy."}</Paragraph></StepSection>
+<StepSection title="Exercise the crash windows"><Paragraph>{"Inject failure after hold commit before response, after provider success before save, after inbox commit before processing, and during expiry/checkout races. Test duplicate and reordered callbacks, stale epochs, clock shifts, cache cold starts, and sold-out retry storms. Roll out state changes compatibly: old workers must understand or safely reject new states; drain work without losing durable obligations."}</Paragraph></StepSection>
+<Callout label="Our choice and its cost">{"Use bounded concurrency, exponential backoff with jitter, per-provider budgets, and explicit manual escalation. Never discard financial recovery obligations just to make queue depth fall."}</Callout>
+<StepSection title="Defend the design"><Paragraph>{"Which alarms page immediately, and which indicate an acceptable degraded seat map?"}</Paragraph></StepSection>
+</StepContent>);
+}

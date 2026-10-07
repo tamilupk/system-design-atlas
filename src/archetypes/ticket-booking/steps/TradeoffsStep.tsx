@@ -1,0 +1,13 @@
+import { StepContent, StepSection, Paragraph, Callout, TradeoffTable } from '@/components/lesson/StepComponents';
+
+export function TradeoffsStep() {
+ return (<StepContent>
+<Callout label="The decision">{"The product team now wants general-admission festivals, cancellations, and a basket covering two concerts. Each changes a different invariant."}</Callout>
+<StepSection title="General admission"><Paragraph>{"Replace seat identities with a capacity invariant: sold + active reserved units must never exceed allocation. One conditional counter can become hot. Escrow partitions disjoint quantities among workers or regions; transferring quotas safely is coordination, and idle quotas can cause false sellouts. Keep an audit ledger to reconcile allocations and returns."}</Paragraph></StepSection>
+<StepSection title="Cancellation and refund"><Paragraph>{"A refund is a durable financial workflow, not a DELETE. Revoke the ticket entitlement and choose when inventory becomes resale-eligible; offline admission scans require a separate revocation policy. A failed refund remains an obligation. Preserve original charge, cancellation, and refund identities so retries cannot manufacture inventory or duplicate compensation."}</Paragraph></StepSection>
+<StepSection title="Cross-event baskets"><Paragraph>{"The current event partitioning does not support a cross-event atomic purchase. Offer separate confirmed orders, a saga with temporary partial holds and compensation, or pay for distributed coordination. If using a saga, tell the customer partial outcomes and time limits; do not label compensation as rollback of history."}</Paragraph></StepSection>
+<TradeoffTable items={[{"aspect": "Row locks", "pros": "Direct ownership proof; atomic seat groups.", "cons": "Lock queues and hot-event limits."}, {"aspect": "Optimistic versions", "pros": "Little waiting when collisions are rare.", "cons": "Retries waste work under flash-sale contention."}, {"aspect": "Bounded payment quarantine", "pros": "Avoids indefinite inventory loss.", "cons": "Late success may require refunds and support."}, {"aspect": "Single event authority", "pros": "Local transactional invariants.", "cons": "Partitions may stop sales; event skew remains."}]} />
+<Callout label="Our choice and its cost">{"The architecture follows the product promise. Keep the assigned-seat baseline until a changed requirement justifies additional coordination."}</Callout>
+<StepSection title="Defend the design"><Paragraph>{"Which requirement would force you to abandon event-local transactions?"}</Paragraph></StepSection>
+</StepContent>);
+}

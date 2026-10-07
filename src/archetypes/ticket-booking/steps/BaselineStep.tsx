@@ -1,0 +1,14 @@
+import { StepContent, StepSection, Paragraph, Callout, CodeBlock } from '@/components/lesson/StepComponents';
+
+export function BaselineStep() {
+ return (<StepContent>
+<Callout label="The decision">{"Begin with a booking application and one transactional database. More services do not improve the proof that two buyers cannot own the same seat."}</Callout>
+<StepSection title="The atomic boundary"><Paragraph>{"For a new hold, validate a distinct, bounded seat list. Begin a transaction and claim the retry key. Lock the requested inventory rows in ascending seat ID order. Confirm every row exists and is AVAILABLE; otherwise roll back the whole group. Insert the hold, mark every seat HELD with its hold ID and generation, and save the response before committing."}</Paragraph></StepSection>
+<StepSection title="Keep the critical section short"><Paragraph>{"Never wait for the user or a payment network inside the transaction. The five-minute hold is a persisted business lease; the row lock lasts only for the transaction. A crashed process releases its transaction locks while committed business holds survive. Use bounded lock waits and retry deadlocks with the same operation identity."}</Paragraph></StepSection>
+<StepSection title="Acknowledgement boundary"><Paragraph>{"A response lost after commit is recovered from the request ledger. A process failure before commit leaves no partial seat group. The database box includes the selected durability configuration; replicas and ingress are collapsed here, not declared unnecessary. Synchronous replication and safe promotion enter the failure step. Later diagrams collapse the authenticated webhook ingress into the Booking API and the snapshot projector into the versioned projection edge; recovery workers also run expiry scans."}</Paragraph></StepSection>
+<CodeBlock code={"BEGIN;\n-- Claim request key, or return its committed result.\nSELECT * FROM inventory\n WHERE event_id = :event AND seat_id = ANY(:seats)\n ORDER BY seat_id FOR UPDATE;\n-- Assert exact row count and all AVAILABLE.\n-- Insert hold; update ALL rows; persist response.\nCOMMIT; -- only now acknowledge"} language="text" />
+<Callout label="Our choice and its cost">{"The database owns inventory. Every release, reservation, and sale must pass through its transaction rules. Restrict direct table writes to trusted application procedures."}</Callout>
+<StepSection title="Defend the design"><Paragraph>{"What if the third of four requested seats is already held? Show the rollback and the retry result."}</Paragraph></StepSection>
+<Paragraph>Source: <a href="https://www.postgresql.org/docs/current/explicit-locking.html" target="_blank" rel="noreferrer">PostgreSQL row locks and deadlocks</a>. The scenario and architecture are illustrative.</Paragraph>
+</StepContent>);
+}

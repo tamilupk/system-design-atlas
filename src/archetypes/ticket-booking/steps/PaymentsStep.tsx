@@ -1,0 +1,16 @@
+import { StepContent, StepSection, Paragraph, Callout, CodeBlock, DecisionChallenge } from '@/components/lesson/StepComponents';
+import { ticketBookingChallenges } from '../challenges';
+
+export function PaymentsStep() {
+ return (<StepContent>
+<Callout label="The decision">{"The provider cannot join your inventory transaction. A charge can succeed while your database is unavailable. Treat that gap as a normal state, not an exceptional log line."}</Callout>
+<StepSection title="Durable intent before the network"><Paragraph>{"Checkout locks the hold and its seats, checks ownership, quote, and deadline, creates a booking in PAYMENT_PENDING, and writes a payment outbox operation in the same transaction. Keep seats reserved. Return 202 with an authenticated status URL; this acknowledges durable intent, not a ticket. A worker checks that the operation is still eligible before calling the provider outside the transaction using a stable operation key. Closure can still race an in-flight call; the refund path handles that unavoidable gap."}</Paragraph></StepSection>
+<StepSection title="Confirm only verified success"><Paragraph>{"For this illustrative immediate-charge flow, a verified successful payment can transition PAYMENT_PENDING to CONFIRMED and seats to SOLD in one database transaction, with an issuance outbox event. Check provider object, merchant account, amount, currency, and booking metadata; a client redirect is not evidence. Failed terminal payments transition to FAILED and release seats."}</Paragraph></StepSection>
+<StepSection title="Close uncertainty explicitly"><Paragraph>{"After an illustrative 15-minute payment recovery window, atomically change unresolved PAYMENT_PENDING to CLOSED, release its seats, and retain a durable reconciliation obligation. CLOSED can never become CONFIRMED. A later verified charge triggers an idempotent refund obligation; a late failure needs no refund. Closing and confirming contend on the same booking/hold locks, so only one wins."}</Paragraph></StepSection>
+<StepSection title="Compensation has a customer cost"><Paragraph>{"A customer can temporarily have a charge but no ticket. Show pending/refund status and escalation ownership. If that experience is unacceptable, choose authorization-before-capture with a separate capture-recovery design; do not pretend authorizations never expire or that capture is infallible."}</Paragraph></StepSection>
+<CodeBlock code={"HELD -> PAYMENT_PENDING -> CONFIRMED (SOLD)\nHELD -> EXPIRED (AVAILABLE)\nPAYMENT_PENDING -> FAILED (AVAILABLE)\nPAYMENT_PENDING -> CLOSED (AVAILABLE)\nCLOSED + late success -> REFUND_PENDING -> REFUNDED\n-- CLOSED never transitions to CONFIRMED"} language="text" />
+<Callout label="Our choice and its cost">{"We choose bounded inventory quarantine followed by durable refund compensation. This guarantees seat exclusivity under our storage assumptions, not an atomic transaction with the payment provider."}</Callout>
+<DecisionChallenge challenge={ticketBookingChallenges["late-payment"]!} />
+<StepSection title="Defend the design"><Paragraph>{"A success callback races the closure job. List the two legal outcomes and the financial obligation in each."}</Paragraph></StepSection>
+</StepContent>);
+}

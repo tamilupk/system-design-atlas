@@ -1,3 +1,4 @@
+import { ticketBookingMetadata } from './ticket-booking/metadata';
 import { chatMetadata } from './chat/metadata';
 import type { ArchetypeMetadata } from '@/types/archetype';
 import { urlShortenerMetadata } from './url-shortener/metadata';
@@ -51,15 +52,7 @@ export const archetypeCatalog: readonly ArchetypeMetadata[] = [
     tags: ['search', 'elasticsearch', 'autocomplete', 'indexing'],
   },
   chatMetadata,
-  {
-    id: 'ticket-booking',
-    title: 'Ticket Booking',
-    description: 'Design a reservation system handling concurrent bookings, inventory management, and seat selection. Covers distributed locking and consistency.',
-    stage: 'foundation',
-    sequence: 8,
-    availability: 'planned',
-    tags: ['reservations', 'inventory', 'locking', 'consistency'],
-  },
+  ticketBookingMetadata,
   {
     id: 'checkout',
     title: 'Checkout & Payments',
@@ -68,6 +61,15 @@ export const archetypeCatalog: readonly ArchetypeMetadata[] = [
     sequence: 9,
     availability: 'planned',
     tags: ['payments', 'sagas', 'idempotency', 'transactions', 'workflows'],
+  },
+  {
+    id: 'rate-limiter',
+    title: 'Distributed Rate Limiter',
+    description: 'Design rate limiting across a fleet of services. Compare token buckets and sliding windows, global versus local quotas, fairness, hot keys, and fail-open versus fail-closed behavior.',
+    stage: 'foundation',
+    sequence: 21,
+    availability: 'planned',
+    tags: ['rate-limiting', 'token-bucket', 'quotas', 'fairness', 'concurrency'],
   },
   // Advanced Distributed Systems
   {
@@ -105,6 +107,24 @@ export const archetypeCatalog: readonly ArchetypeMetadata[] = [
     sequence: 13,
     availability: 'planned',
     tags: ['crdt', 'collaboration', 'real-time', 'conflict-resolution'],
+  },
+  {
+    id: 'web-crawler',
+    title: 'Web Crawler',
+    description: 'Design a distributed crawler with a durable URL frontier, per-host politeness, robots.txt handling, URL and content deduplication, crawl-trap protection, and incremental recrawling.',
+    stage: 'advanced',
+    sequence: 22,
+    availability: 'planned',
+    tags: ['crawling', 'scheduling', 'deduplication', 'backpressure', 'fault-tolerance'],
+  },
+  {
+    id: 'distributed-key-value-store',
+    title: 'Distributed Cache & Key-Value Store',
+    description: 'Design a partitioned key-value service with replication, consistency choices, hot-key handling, and rebalancing. Distinguish an evictable cache from a durable store, including expiry, recovery, and data-loss guarantees.',
+    stage: 'advanced',
+    sequence: 23,
+    availability: 'planned',
+    tags: ['caching', 'key-value', 'partitioning', 'replication', 'consistency', 'durability'],
   },
   // GenAI Systems
   {

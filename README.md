@@ -36,12 +36,15 @@ An interactive, decision-driven system design curriculum and architecture simula
 | **Home Timeline** | Foundation | — | 📋 Planned |
 | **Product Search & Autocomplete** | Foundation | — | 📋 Planned |
 | **Real-Time Chat** | Foundation | 12 Interactive Steps | ✅ **Available** |
-| **Ticket Booking** | Foundation | — | 📋 Planned |
+| **Ticket Booking** | Foundation | 14 Interactive Steps | ✅ **Available** |
 | **Checkout & Payments** | Foundation | — | 📋 Planned |
+| **Distributed Rate Limiter** | Foundation | — | 📋 Planned |
 | **Event Streams & Analytics** | Advanced | — | 📋 Planned |
 | **Location & Matching** | Advanced | — | 📋 Planned |
 | **Distributed Infrastructure** | Advanced | — | 📋 Planned |
 | **Collaborative Editing** | Advanced | — | 📋 Planned |
+| **Web Crawler** | Advanced | — | 📋 Planned |
+| **Distributed Cache & Key-Value Store** | Advanced | — | 📋 Planned |
 | **LLM Request/Response Apps** | GenAI | — | 📋 Planned |
 | **Conversational Assistants** | GenAI | — | 📋 Planned |
 | **Retrieval-Augmented Generation** | GenAI | — | 📋 Planned |

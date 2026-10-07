@@ -1,0 +1,13 @@
+import { StepContent, StepSection, Paragraph, Callout } from '@/components/lesson/StepComponents';
+
+export function PartitioningStep() {
+ return (<StepContent>
+<Callout label="The decision">{"You spread 100 events over 20 shards, but 80% of requests target tonight’s concert. Average utilization is comforting and irrelevant."}</Callout>
+<StepSection title="Keep one transaction local"><Paragraph>{"Partition by event_id so inventory, holds, retry records, booking state, and outbox transitions share a transaction. Route an event to its current shard through a versioned directory. Independent events can scale horizontally; extra application instances do not increase the capacity of a contended seat."}</Paragraph></StepSection>
+<StepSection title="Hot-event options"><Paragraph>{"Place a hot event on a dedicated shard and cap its admission independently. If it still exceeds the tested envelope, split by section only after defining baskets: same-section groups can remain atomic, while cross-section groups require distributed coordination or a product restriction. General-admission pools can use escrow quotas; assigned seat identities cannot be replaced by one approximate counter."}</Paragraph></StepSection>
+<StepSection title="Move ownership safely"><Paragraph>{"Prefer moving before a sale. During a move, stop new writes for that event, drain transactions, copy a complete state and change-log position, fence the old writer, then publish the new route epoch. Storage must reject old ownership epochs, including delayed worker writes. A directory update alone does not stop an old process."}</Paragraph></StepSection>
+<StepSection title="Read replicas have a boundary"><Paragraph>{"Replicas can serve public discovery or snapshots. Booking status immediately after checkout should use the authority or a proven read-your-writes mechanism. Replica lag must never authorize a hold, a release, or a refund. Geographic reader scale does not imply geographic writer safety."}</Paragraph></StepSection>
+<Callout label="Our choice and its cost">{"Local transactions buy a simple correctness proof and impose a hot-event ceiling. Change the product boundary before casually introducing distributed transactions."}</Callout>
+<StepSection title="Defend the design"><Paragraph>{"A family wants seats on both sides of an aisle that crosses shard sections. What guarantee do you offer?"}</Paragraph></StepSection>
+</StepContent>);
+}

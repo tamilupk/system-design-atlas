@@ -11,7 +11,7 @@ describe('URL Shortener Senior Decision Challenges', () => {
     'rate-limiting-placement',
   ];
 
-  it('contains all 6 required senior FAANG challenges', () => {
+  it('contains all 6 required senior challenges', () => {
     expect(Object.keys(urlShortenerChallenges)).toEqual(expect.arrayContaining(challengeKeys));
     expect(Object.keys(urlShortenerChallenges).length).toBe(6);
   });
@@ -20,7 +20,7 @@ describe('URL Shortener Senior Decision Challenges', () => {
     describe(`Challenge: ${key}`, () => {
       const challenge = urlShortenerChallenges[key]!;
 
-      it('has complete senior scenario and FAANG interview context', () => {
+      it('has complete senior scenario and Tier-1 interview context', () => {
         expect(challenge.title.length).toBeGreaterThan(10);
         expect(challenge.scenario.length).toBeGreaterThan(40);
         expect(challenge.interviewContext.length).toBeGreaterThan(20);

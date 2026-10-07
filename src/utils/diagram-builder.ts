@@ -11,7 +11,7 @@ import type {
 } from '@/types/diagram';
 
 /**
- * Creates a strongly typed diagram node with optional concept link and FAANG component spec.
+ * Creates a strongly typed diagram node with optional concept link and Tier-1 component spec.
  */
 export function createNode(params: {
   id: string;

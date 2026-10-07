@@ -6,7 +6,7 @@ test.describe('System Design Atlas - Core User Journey', () => {
     await page.goto('/');
     await expect(page).toHaveTitle(/System Design Atlas/);
     await expect(page.getByRole('heading', { level: 1, name: 'System Design Atlas' })).toBeVisible();
-    await expect(page.getByText('2 chapters available · 18 chapters planned')).toBeVisible();
+    await expect(page.getByText('3 chapters available · 20 chapters planned')).toBeVisible();
 
     // Verify filters work
     await expect(page.getByText('Foundation & Core Applications')).toBeVisible();
@@ -65,7 +65,7 @@ test.describe('System Design Atlas - Core User Journey', () => {
     const simulateBtn = page.getByRole('button', { name: /Simulate & Evaluate Decision/i }).first();
     await simulateBtn.click();
     await expect(page.getByText('Optimal Architectural Decision').first()).toBeVisible();
-    await expect(page.getByText('Senior FAANG Engineering Rationale:').first()).toBeVisible();
+    await expect(page.getByText('Senior Engineering Rationale:').first()).toBeVisible();
 
     // 6. Test Multi-Flow Switcher in Architecture Diagram
     await expect(page.getByRole('tab', { name: /Cache Hit/i })).toBeVisible();

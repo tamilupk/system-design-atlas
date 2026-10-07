@@ -108,7 +108,7 @@ Progress is saved in `localStorage` under the versioned key `system-design-atlas
 
 `npm run build` is `tsc -b && vite build && vite-node scripts/prerender-cli.ts`. The prerender step post-processes `dist/` so every public route has real, crawlable HTML:
 
-- Emits one `index.html` per route (currently 30: home, the `url-shortener` and `chat` overviews, their 21 steps, and the 6 concept pages) into path-shaped directories.
+- Emits one `index.html` per route (currently 45: home, three chapter overviews, their 35 steps, and the 6 concept pages) into path-shaped directories.
 - Injects per-route `<title>`, meta description, canonical URL, Open Graph tags, and `TechArticle` + `BreadcrumbList` JSON-LD.
 - Injects a static `fallbackHtml` payload inside `#root` so the page has readable content before hydration.
 - Generates `sitemap.xml` (with `changefreq`/`priority` per route) and `robots.txt`.
@@ -133,9 +133,9 @@ Diagrams are hand-authored data rendered as inline SVG by React components in `s
 
 **Playback behavior:** when a sequence is playing, a `setInterval` advances one flow event every **1500 ms** and stops at the end of the sequence. A `flowRunId` counter forces a clean restart when the user replays or switches sequences.
 
-**Flow tab bar:** the sequence selector is a floating pill bar (`height: 28px`) pinned to the top-left of the canvas. It scrolls horizontally when sequences overflow, and its scrollbar is suppressed across all engines (`scrollbar-width`, `-ms-overflow-style`, and `::-webkit-scrollbar` set to `display: none !important`) so the bar reads as a control strip rather than a scrollable region.
+**Flow tab bar:** the sequence selector is a floating pill bar (`height: 28px`) pinned to the top-left of the canvas. It scrolls horizontally when sequences overflow, and its scrollbar is suppressed across all engines (`scrollbar-width`, `-ms-overflow-style`, and `::-webkit-scrollbar` set to `display: none !important`) so the bar reads as a control strip rather than a scrollable region. The diagram bounds reserve extra space above the top node to keep floating controls from covering the drawing at compact desktop heights.
 
-Chapter lengths are variable: URL Shortener has 9 steps and Real-Time Chat has 12. Manifests, lesson definitions, navigation, progress totals, and prerendering use the actual step list; there is no fixed chapter-length contract.
+Chapter lengths are variable: URL Shortener has 9 steps, Real-Time Chat has 12, and Ticket Booking has 14. Manifests, lesson definitions, navigation, progress totals, and prerendering use the actual step list; there is no fixed chapter-length contract.
 
 ## Lesson Shell
 
