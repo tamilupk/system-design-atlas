@@ -1,5 +1,6 @@
 import { createBrowserRouter, Outlet, useNavigate } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
+import { LoadError } from '@/components/ui/LoadError';
 import { AppShell } from '@/components/layout/AppShell';
 
 const HomePage = lazy(() => import('@/pages/HomePage').then(m => ({ default: m.HomePage })));
@@ -44,6 +45,7 @@ function RootLayout() {
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <LoadError />,
     children: [
       {
         path: '/',
