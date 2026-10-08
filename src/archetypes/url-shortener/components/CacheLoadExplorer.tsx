@@ -2,7 +2,7 @@ import { useState, type FC } from 'react';
 import styles from './CacheLoadExplorer.module.css';
 
 export const CacheLoadExplorer: FC = () => {
-  const [requestsPerSecond, setRequestsPerSecond] = useState<number>(10000);
+  const [requestsPerSecond, setRequestsPerSecond] = useState<number>(20000);
   const [hitRatio, setHitRatio] = useState<number>(95);
 
   const calculateDbReads = (rps: number, ratio: number) => {
@@ -16,7 +16,7 @@ export const CacheLoadExplorer: FC = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h3 className={styles.title}>Cache Load Explorer</h3>
-        <p className={styles.subtitle}>Interactive model of cache impact on database read load</p>
+        <p className={styles.subtitle}>Interactive model of cache impact on mapping lookups</p>
       </div>
 
       <div className={styles.controls}>
@@ -59,23 +59,23 @@ export const CacheLoadExplorer: FC = () => {
 
       <div className={styles.results}>
         <div className={styles.resultRow}>
-          <span className={styles.resultLabel}>Estimated DB Reads / sec (with cache):</span>
+          <span className={styles.resultLabel}>Mapping lookups / sec (with cache):</span>
           <span className={styles.resultValue}>{currentDbReads.toLocaleString()}</span>
         </div>
         <div className={styles.resultRow}>
-          <span className={styles.resultLabel}>DB Reads / sec (cache disabled):</span>
+          <span className={styles.resultLabel}>Mapping lookups / sec (cache disabled):</span>
           <span className={styles.resultValue} style={{ color: 'var(--color-text-secondary)' }}>
             {dbReadsWithoutCache.toLocaleString()}
           </span>
         </div>
         
         <div className={styles.formula}>
-          Formula: DB Reads = RPS × (1 - Hit Ratio)
+          Formula: Mapping lookups = RPS × (1 - Hit Ratio)
         </div>
       </div>
 
       <p className={styles.note}>
-        Note: This is a simplified model. It excludes writes, retries, replication overhead, and cache stampede effects.
+        This estimates lookup demand before coalescing, not total database queries. The scaled design also adds a primary freshness probe and replica replay checks per miss; fallback can query both databases. Writes, retries, replication, and optional analytics add further work.
       </p>
     </div>
   );

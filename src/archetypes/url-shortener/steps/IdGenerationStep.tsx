@@ -14,7 +14,7 @@ export const IdGenerationStep: FC<StepComponentProps> = () => {
         <p className={styles.paragraph}>
           The core technical challenge of a URL shortener is reliably generating unique, compact strings.
           The standard Base62 alphabet is <code className={styles.inlineCode}>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz</code> (digits 0–9, uppercase A–Z, lowercase a–z).
-          A 7-character Base62 string provides 62<sup>7</sup> ≈ 3.52 trillion unique combinations, accommodating billions of URLs with negligible collision risk.
+          A 7-character Base62 string provides 62<sup>7</sup> ≈ 3.52 trillion unique combinations, providing ample space, but still requiring collision detection. A low per-insert collision probability does not mean no collision over the service lifetime.
         </p>
       </div>
 
@@ -24,13 +24,13 @@ export const IdGenerationStep: FC<StepComponentProps> = () => {
           items={[
             {
               aspect: 'Random Generation (e.g. 7 random chars)',
-              pros: 'Unpredictable and un-enumerable (resists link enumeration attacks); stateless generation on app servers',
-              cons: 'Collision rate rises as keyspace fills (Birthday paradox); requires unique index & retry loop on insert'
+              pros: 'With a cryptographic random generator, removes obvious sequential enumeration; simple app-side generation',
+              cons: 'Next-attempt collision probability rises with occupied keyspace; lifetime collisions require a unique index and retry loop'
             },
             {
               aspect: 'Sequential ID + Base62 Encoding',
-              pros: 'Zero collisions by design; strictly deterministic; optimal B-Tree index insertion locality',
-              cons: 'Predictable sequence allows competitor scraping; requires centralized range server or 64-bit Snowflake IDs'
+              pros: 'Unique with a correctly coordinated allocator; numeric primary keys have good insertion locality',
+              cons: 'Predictable codes expose enumeration; distributed allocation and code length need an explicit contract'
             }
           ]}
         />
@@ -60,18 +60,24 @@ ID 35,000,000  -> Base62 "2Mr68"  (2 × 62⁴ + 22 × 62³ + 53 × 62² + 6 × 6
           <li>
             <strong>1. Random Code Collisions:</strong> Occur when the random generator picks an already-used string. 
             Because the database enforces a <code className={styles.inlineCode}>UNIQUE</code> constraint on <code className={styles.inlineCode}>short_code</code>, the insert aborts. 
-            The app server catches this constraint violation and immediately retries with a fresh random code (up to 3 attempts).
+            Use INSERT ... ON CONFLICT DO NOTHING or roll back to a savepoint before retrying a fresh random code (up to 3 attempts). Catching a PostgreSQL error alone does not make an aborted transaction usable. Exhaustion returns a retryable failure under the same request key.
           </li>
           <li>
             <strong>2. Request Idempotency:</strong> If a client sends a create request and the network drops before receiving the 201 response, the client retries. 
             To prevent creating multiple duplicate short codes for the same request, clients include an <code className={styles.inlineCode}>Idempotency-Key</code> header. 
-            The server checks an idempotency store to return the previously created record.
+            The server atomically stores the request hash and result with the mapping. A code UNIQUE constraint alone does not deduplicate requests; the same destination may intentionally have several links.
           </li>
           <li>
             <strong>3. Custom-Alias Conflicts:</strong> When a user explicitly requests an alias like <code className={styles.inlineCode}>"my-link"</code>, any collision is <em>deterministic and intentional</em>. 
             The server must <strong>never</strong> silently retry with a random code; it must immediately return an HTTP <code className={styles.inlineCode}>409 Conflict</code> so the user can choose another alias.
           </li>
         </ul>
+      </div>
+
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>Our choice at this scale</h3>
+        <p className={styles.paragraph}>Use uniformly sampled cryptographic random seven-character Base62 codes and a unique-index retry loop. At 6B occupied codes, the next candidate collides with probability 6B / 62⁷ ≈ 0.17%; this is per attempt, not the chance of any collision ever. At roughly 40 creates/s average and 200/s peak, benchmark the random secondary index rather than introducing a cipher-based allocator to solve an unproven write bottleneck. A numeric primary key can still keep the main insertion key sequential.</p>
+        <p className={styles.paragraph}>A permutation preserves uniqueness only over its defined input domain and with unique inputs; encoding the full 64-bit domain can require 11 Base62 characters. Randomizing the public code still randomizes its secondary index. Neither a short random code nor a home-grown Feistel construction substitutes for authorization. Keep claimed-code tombstones if codes must never be reassigned.</p>
       </div>
 
       <div className={styles.section}>

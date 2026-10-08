@@ -9,6 +9,7 @@ interface DiagramEdgeProps {
   highlighted: boolean;
   dimmed: boolean;
   hasReverseEdge?: boolean;
+  showLabel?: boolean;
 }
 
 export const DiagramEdge: React.FC<DiagramEdgeProps> = ({
@@ -18,6 +19,7 @@ export const DiagramEdge: React.FC<DiagramEdgeProps> = ({
   highlighted,
   dimmed,
   hasReverseEdge = false,
+  showLabel = true,
 }) => {
   // Vector between node centers
   const dx = toPos.x - fromPos.x;
@@ -74,7 +76,7 @@ export const DiagramEdge: React.FC<DiagramEdgeProps> = ({
   const markerId = `arrowhead-${edge.id}-${highlighted ? 'highlight' : 'default'}`;
 
   return (
-    <g style={{ opacity, transition: 'opacity 0.2s ease' }}>
+    <g data-edge-id={edge.id} style={{ opacity, transition: 'opacity 0.2s ease' }}>
       <defs>
         <marker
           id={markerId}
@@ -99,7 +101,7 @@ export const DiagramEdge: React.FC<DiagramEdgeProps> = ({
         style={{ transition: 'stroke 0.2s ease, stroke-width 0.2s ease' }}
       />
       
-      {edge.label && (
+      {showLabel && edge.label && (
         <g transform={`translate(${labelX}, ${labelY})`} className={styles.labelGroup}>
           <rect
             x={-edge.label.length * 4 - 8}

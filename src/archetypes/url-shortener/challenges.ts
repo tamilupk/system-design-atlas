@@ -1,271 +1,266 @@
 import type { ChallengeDefinition } from '@/types/challenge';
 
 export const urlShortenerChallenges: Record<string, ChallengeDefinition> = {
-  'id-generation-strategy': {
-    id: 'id-generation-strategy',
-    title: 'Architectural Dilemma: Short-Code Generation at Scale',
-    category: 'ID Generation',
-    scenario: 'Your system must handle 100 million short URL creations per month (approx. 40 creates/sec average, 500/sec peak). Competitors must not be able to crawl or guess short links by incrementing IDs. Database insertion locality must remain high.',
-    interviewContext: 'Tier-1 interviewers evaluate whether you understand the collision curve (Birthday Paradox), B-Tree indexing locality, and security implications of enumerable sequential keys.',
-    options: [
+  "id-generation-strategy": {
+    "id": "id-generation-strategy",
+    "title": "Short-code generation at our actual scale",
+    "scenario": "Plan for 100M creations/month: about 40/s average, 200/s peak, and up to 6B retained codes. Avoid obvious sequential enumeration without inventing a high-write bottleneck. Which baseline is justified?",
+    "category": "ID Generation",
+    "interviewContext": "Defend the chosen guarantee, its authority, failure boundary, capacity assumptions, and operational cost.",
+    "options": [
       {
-        id: 'opt-random',
-        title: '7 Random Base62 Characters with DB Retry Loop',
-        description: 'App servers generate 7 random chars statelessly. On collision, the DB UNIQUE index rejects the insert, triggering a retry (up to 3 attempts).',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Collision Rate at 100M keys: ~0.0014% (Negligible). At 1B keys: ~0.14%.',
-          outcome: 'Functionally viable for small systems, but introduces random B-Tree page splits and non-deterministic latency spikes during collisions.',
-          impact: 'Random writes scatter across all leaf pages of the DB index, increasing buffer pool thrashing and write amplification on SSDs.',
+        "id": "opt-random",
+        "title": "7 Random Base62 Characters with DB Retry Loop",
+        "description": "Uniform cryptographic randomness; enforce code uniqueness and retry generated collisions, separately from request idempotency.",
+        "isOptimal": true,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "At 6B occupied codes, next-attempt collision probability is 6B / 62⁷ ≈ 0.17%. Lifetime collisions are expected and handled.",
+          "impact": "Random secondary-index writes and retries remain costs; primary numeric IDs can stay sequential."
         },
-        seniorRationale: 'While random keys prevent enumeration, the true senior concern is storage engine locality. Pure random strings destroy B-Tree insertion cache locality because every write lands on an arbitrary leaf page.',
-        tradeOffSummary: 'Pros: Simple, stateless. Cons: High write amplification, random disk I/O, collision retries under scale.',
+        "seniorRationale": "This is simple at the stated write rate. Benchmark index locality before paying for an allocator and permutation. Public IDs still require separate authorization.",
+        "tradeOffSummary": "Random secondary-index writes and retries remain costs; primary numeric IDs can stay sequential."
       },
       {
-        id: 'opt-feistel',
-        title: '64-bit Sequence/Snowflake + Feistel Pseudo-Random Permutation + Base62',
-        description: 'Generate sequential 64-bit integer IDs (via central counter or Snowflake generator), pass through a Feistel cipher permutation to obscure sequence without collisions, then Base62 encode.',
-        isOptimal: true,
-        simulationResult: {
-          metric: 'Collision Rate: 0.0000% (Strictly zero mathematical collisions across entire 64-bit space).',
-          outcome: 'Deterministic uniqueness with un-enumerable, randomized appearance to external users.',
-          impact: 'Zero retry overhead, predictable p99 latency (< 5ms), and complete resistance to competitor scraping.',
+        "id": "opt-feistel",
+        "title": "64-bit Sequence, Permutation, then Base62",
+        "description": "Coordinate unique numeric inputs and use a reviewed permutation over a defined domain.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Uniqueness requires a correct allocator and bijection. Full 64-bit outputs may need 11 Base62 characters, not seven.",
+          "impact": "Adds allocator, key management, domain sizing, and migration complexity without a demonstrated bottleneck here."
         },
-        seniorRationale: 'This is the gold standard senior answer at Google and Meta. By applying a reversible pseudo-random permutation (like a 3-round Feistel cipher) over a sequential integer keyspace, you guarantee bijective 1-to-1 mapping (zero collisions) while producing completely scrambled, unguessable output strings.',
-        tradeOffSummary: 'Pros: Zero collisions, zero DB retries, completely unpredictable to scrapers. Cons: Minor algorithmic complexity in Feistel permutation.',
+        "seniorRationale": "This can fit other requirements, but a scrambled code still has random secondary-index locality. A custom few-round cipher does not prove unguessability or fixed latency.",
+        "tradeOffSummary": "Adds allocator, key management, domain sizing, and migration complexity without a demonstrated bottleneck here."
       },
       {
-        id: 'opt-md5',
-        title: 'MD5 Hash of Long URL Truncated to 7 Characters',
-        description: 'Hash the input long URL using MD5 or SHA-256, take the first 42 bits (7 Base62 chars), and insert into the database.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Collision Rate: Birthday paradox hits at ~1.9 million URLs (√62⁷ ≈ 1.87M).',
-          outcome: 'Disastrous collision storm as the table grows past 2 million records.',
-          impact: 'Different long URLs produce identical 7-character hashes, requiring manual collision salt loops.',
+        "id": "opt-md5",
+        "title": "Truncated Hash of the Long URL",
+        "description": "Deterministically map each destination to a short hash-derived code.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Different destinations can share a code; detect collisions and persist disambiguation. Duplicate URLs may need separate owner-specific links.",
+          "impact": "Requires a collision protocol and a deliberate duplicate-destination policy."
         },
-        seniorRationale: 'Truncated cryptographic hashing is a classic junior interview anti-pattern. Due to the Birthday Paradox, a 42-bit hash has a 50% probability of collision after only ~1.9 million URLs, rendering it unusable for high-volume systems.',
-        tradeOffSummary: 'Pros: Idempotent by URL. Cons: Fatal collision cliff after 2M records; required hashing overhead.',
+        "seniorRationale": "Birthday reasoning concerns the chance of any collision among many keys, not a sudden per-insert collision storm. Hashing the URL is not request idempotency.",
+        "tradeOffSummary": "Requires a collision protocol and a deliberate duplicate-destination policy."
       },
       {
-        id: 'opt-raw-seq',
-        title: 'Raw Sequential Auto-Increment + Base62 Encoding',
-        description: 'Use database BIGSERIAL (1, 2, 3...) or centralized Redis INCR, directly encoded to Base62.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Scraping Vulnerability: 100% trivial enumeration attack.',
-          outcome: 'Zero collisions and great B-Tree locality, but competitors can crawl the entire database in hours.',
-          impact: 'Exposes exact business volume, total active URLs, and sensitive customer landing pages.',
+        "id": "opt-raw-seq",
+        "title": "Raw Sequential ID + Base62",
+        "description": "Encode a correctly allocated database sequence directly.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Simple unique allocation makes neighboring codes enumerable; encoding is not encryption.",
+          "impact": "Coordination and allocation are straightforward initially, but public sequences expose enumeration."
         },
-        seniorRationale: 'Raw sequential encoding is operationally simple and has perfect database locality, but in production, predictable IDs are an immediate security and business vulnerability. Anyone can write a loop from 1 to N and scrape every private link in your system.',
-        tradeOffSummary: 'Pros: Zero collisions, append-only B-Tree locality. Cons: Zero security; trivial competitor scraping.',
-      },
-    ],
+        "seniorRationale": "This is valid where predictability is acceptable. Our stated preference is to avoid easy sequential enumeration, not claim opaque IDs are security.",
+        "tradeOffSummary": "Coordination and allocation are straightforward initially, but public sequences expose enumeration."
+      }
+    ]
   },
-
-  'cache-eviction-ttl': {
-    id: 'cache-eviction-ttl',
-    title: 'Architectural Dilemma: Redis Eviction & TTL Configuration',
-    category: 'Caching Strategy',
-    scenario: 'Your URL shortener has 500 million active mappings in PostgreSQL (approx 50GB storage), but your cache budget is constrained to 10GB of RAM (approx 100M cached keys). Access patterns follow an 80/20 power law where popular links change dynamically over time.',
-    interviewContext: 'Interviewers look for realistic working-set calculations, understanding of Redis memory eviction algorithms (LRU vs LFU vs noeviction), and TTL jitter to prevent synchronized expiration.',
-    options: [
+  "cache-eviction-ttl": {
+    "id": "cache-eviction-ttl",
+    "title": "Redis eviction and bounded freshness",
+    "scenario": "500M mappings × 500 bytes = 250 GB logical storage. A proposed 10 GB cache fits at most 20M payloads before overhead, not 100M; that is capacity, not expected residency under our short validity window. Mutable links permit at most a 30-second internal stale-decision window.",
+    "category": "Caching Strategy",
+    "interviewContext": "Defend the chosen guarantee, its authority, failure boundary, capacity assumptions, and operational cost.",
+    "options": [
       {
-        id: 'opt-lru-jitter',
-        title: 'Volatile-LRU + 24h TTL with ±10% Jitter bounded by Link Expiry',
-        description: 'Set a 24-hour TTL with random jitter (e.g. 21.6h - 26.4h) to avoid synchronized expiration waves, bounded by the link’s actual expiration timestamp. Use volatile-LRU eviction.',
-        isOptimal: true,
-        simulationResult: {
-          metric: 'Cache Hit Ratio: ~96.2% sustained. Database read offload: 95%+. Memory usage: Capped strictly at 9.8GB.',
-          outcome: 'Working set remains fresh in RAM; cold keys evict automatically; zero synchronized expiration spikes.',
-          impact: 'Protects primary database from sudden expiration flash-crowds while guaranteeing memory budget limits.',
+        "id": "opt-lru-jitter",
+        "title": "Evictable cache + downward-jittered validity",
+        "description": "Use allkeys-LRU on the dedicated mapping cache, 24–30s absolute validity capped by expiry, and committed invalidation/version guards.",
+        "isOptimal": true,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Eviction limits payload residency and jitter spreads independent expirations; actual hit rate depends on reuse within this short window.",
+          "impact": "Short freshness costs misses; provision memory overhead and database fallback capacity."
         },
-        seniorRationale: 'This demonstrates complete production maturity: (1) Jitter prevents cache stampedes caused by simultaneous key expiration waves; (2) Volatile-LRU ensures only keys with TTL are candidate for eviction, protecting operational metadata; (3) Bounding by expiration timestamp ensures expired links are never served.',
-        tradeOffSummary: 'Pros: Optimal hit ratio, zero expiration cliffs, strictly bounded memory. Cons: Small CPU overhead for pseudo-LRU sampling.',
+        "seniorRationale": "Keep quota/idempotency state outside the evictable cache. Check stored state and expiry on every hit; TTL alone does not close stale-fill races.",
+        "tradeOffSummary": "Short freshness costs misses; provision memory overhead and database fallback capacity."
       },
       {
-        id: 'opt-no-ttl',
-        title: 'Infinite TTL with AllKeys-LRU Eviction',
-        description: 'Never set a TTL on keys. Rely entirely on Redis LRU eviction to push out older keys when memory hits the 10GB maxmemory cap.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Memory churn: Constant eviction overhead; stale expired links remain in memory until evicted.',
-          outcome: 'Keys that have expired in PostgreSQL remain served by Redis until evicted by higher-traffic keys.',
-          impact: 'Violates expiration business logic: users who set a 1-hour expiration find their links active days later.',
+        "id": "opt-no-ttl",
+        "title": "No freshness deadline; rely on LRU",
+        "description": "Keep cached values until memory pressure evicts them.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "A frequently accessed old destination can stay cached indefinitely after a mutation if invalidation fails.",
+          "impact": "Eviction is a memory policy, not a bound on mutable-data staleness."
         },
-        seniorRationale: 'Omitting TTL breaks time-to-live correctness when users configure link expiration. Furthermore, without TTLs, temporary viral spikes permanently pollute the cache until memory saturation occurs.',
-        tradeOffSummary: 'Pros: Simple app code. Cons: Serves expired links; memory permanently pinned at 100%.',
+        "seniorRationale": "Explicit expires_at checks can enforce scheduled expiry even without Redis TTL, but they do not reveal a new delete or edit absent a freshness/invalidation protocol.",
+        "tradeOffSummary": "Eviction is a memory policy, not a bound on mutable-data staleness."
       },
       {
-        id: 'opt-noeviction',
-        title: 'No-Eviction Policy with Strict 24h TTL',
-        description: 'Configure Redis with noeviction policy. Rely exclusively on TTL expiration to free memory.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'OOM Errors: Once 10GB is full, all Redis writes (SETEX) throw OOM errors until keys expire.',
-          outcome: 'Cache write path collapses during unexpected traffic spikes.',
-          impact: 'App servers encounter Redis errors and fall back to hammering the database on every single request.',
+        "id": "opt-noeviction",
+        "title": "No eviction with fixed TTL",
+        "description": "Reject new cache writes when the mapping cache reaches its memory limit.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Existing hits remain usable; rejected fills increase future misses. A correctly isolated fill failure does not invalidate the current database result.",
+          "impact": "Needs extra memory headroom and careful handling of fill rejection; not an automatic database crash."
         },
-        seniorRationale: 'Using noeviction in a caching tier is dangerous. Under an unexpected traffic surge, Redis memory fills up and immediately rejects all new writes, crippling the cache-aside populate path.',
-        tradeOffSummary: 'Pros: No unexpected data loss. Cons: Fatal OOM write failures during traffic surges.',
-      },
-    ],
+        "seniorRationale": "Noeviction is a legitimate policy for other roles. For rebuildable mappings, evicting cold values is a better default than refusing all new candidates.",
+        "tradeOffSummary": "Needs extra memory headroom and careful handling of fill rejection; not an automatic database crash."
+      }
+    ]
   },
-
-  'replication-lag-race': {
-    id: 'replication-lag-race',
-    title: 'Architectural Dilemma: Read-After-Write Consistency under DB Lag',
-    scenario: 'A user creates a short link `https://tiny.url/launch` on social media and immediately clicks it to test. The redirect query misses the cache and hits a Read Replica experiencing 80ms of replication lag. The replica returns row-not-found, serving an HTTP 404 to the creator.',
-    category: 'Database Replication',
-    interviewContext: 'Tier-1 system design interviews rigorously test eventual consistency and read-your-own-writes guarantees. How do you prevent fresh writes from appearing lost without degrading write throughput?',
-    options: [
+  "replication-lag-race": {
+    "id": "replication-lag-race",
+    "title": "Read-after-create without a magic sticky window",
+    "scenario": "A newly created link misses Redis and an async replica has not replayed its commit. The same system allows edits and deletions. Choose a redirect miss policy that works for anonymous visitors as well as creators.",
+    "category": "Database Replication",
+    "interviewContext": "Defend the chosen guarantee, its authority, failure boundary, capacity assumptions, and operational cost.",
+    "options": [
       {
-        id: 'opt-hybrid-routing',
-        title: 'Hybrid Read-After-Write Routing via Redis / Session Stamp',
-        description: 'When creating a short URL, immediately write the mapping to Redis with a 24h TTL. Additionally, record a temporary timestamp in the user session: for 5 seconds after creation, route reads by this user to the DB Primary if cache misses.',
-        isOptimal: true,
-        simulationResult: {
-          metric: 'Read-your-own-writes consistency: 100%. User-observed 404s: 0.00%.',
-          outcome: 'The creator and early followers hit Redis immediately (< 2ms). If Redis fails, read-after-write routing queries the Primary DB.',
-          impact: 'Negligible load on Primary DB (< 0.1% of reads), with absolute consistency for the link creator.',
+        "id": "opt-hybrid-routing",
+        "title": "Replica replay barrier + primary fallback",
+        "description": "On a miss, obtain a primary WAL barrier, wait for replica replay, query a fresh snapshot, and use bounded primary fallback. Cache warmup is optional.",
+        "isOptimal": true,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Replay-checked replica reads include commits before the barrier. Primary confirmation resolves replica misses; unavailable authority yields 503.",
+          "impact": "Each miss adds a primary freshness probe and replica wait; bounded primary fallback preserves correctness but costs primary capacity."
         },
-        seniorRationale: 'Senior engineers recognize that caching on write eliminates 99% of read-after-write races before the replica is ever touched. Pairing write-time cache warming with transient Primary routing for fresh links guarantees zero false 404s with zero impact on replica scalability.',
-        tradeOffSummary: 'Pros: Perfect creator consistency, zero write throughput penalty on DB. Cons: Requires tracking recent write timestamp.',
+        "seniorRationale": "Creator sessions do not travel with shared links. A same-lineage replay barrier followed by a new query snapshot addresses stale positives as well as fresh creates; a missing-row fallback alone does not.",
+        "tradeOffSummary": "Each miss adds a primary freshness probe and replica wait; bounded primary fallback preserves correctness but costs primary capacity."
       },
       {
-        id: 'opt-sync-replication',
-        title: 'Convert Read Replicas to Synchronous Replication',
-        description: 'Configure PostgreSQL with `synchronous_commit = on` and synchronous replication so primary writes block until acknowledged by read replicas.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Write Latency: Jumps from 4ms to 65ms (16x increase). Primary write throughput drops by 70%.',
-          outcome: 'Consistency is guaranteed, but write performance and availability are severely degraded.',
-          impact: 'If a single read replica suffers a transient slowdown, all short URL creation across the entire globe freezes.',
+        "id": "opt-sync-replication",
+        "title": "Assume synchronous receipt makes every reader fresh",
+        "description": "Enable synchronous_commit=on and query any replica after create.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Durable receipt is not necessarily replay visibility, and an arbitrary replica may not be a required synchronous participant.",
+          "impact": "Must specify the acknowledged replicas and read routing; a setting alone is insufficient."
         },
-        seniorRationale: 'Synchronous replication couples write availability and latency to the slowest replica. In a system where reads outnumber writes 100:1, penalizing the write path with cross-node sync latency is poor architectural trade-off.',
-        tradeOffSummary: 'Pros: Zero replication lag. Cons: High write latency, vulnerability to replica network stalls.',
+        "seniorRationale": "A selected replay-confirmed standby with remote_apply or an explicit replay barrier can support the guarantee, at additional write/read latency and availability cost. Sync AZ durability remains valuable separately.",
+        "tradeOffSummary": "Must specify the acknowledged replicas and read routing; a setting alone is insufficient."
       },
       {
-        id: 'opt-retry-replica',
-        title: 'Poll Replica with Exponential Backoff on 404',
-        description: 'When the app server receives a 404 from a replica, sleep for 20ms and retry up to 3 times before returning 404 to the user.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Redirect p99 latency spikes to 180ms on cold/invalid links; app server worker threads become blocked sleeping.',
-          outcome: 'Legitimate 404 requests (typos, invalid URLs) are delayed by 100ms+.',
-          impact: 'Thread pool starvation on application servers under high error rates.',
+        "id": "opt-retry-replica",
+        "title": "Retry a fixed number of replica misses",
+        "description": "Poll the same replica a few times and then report not found.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "A finite delay cannot guarantee catch-up under unbounded lag; real typos also consume extra queries.",
+          "impact": "Additional latency and load still leave false negatives possible."
         },
-        seniorRationale: 'Retrying on 404 in the redirect critical path introduces thread blocking and latency inflation for genuine 404s. It converts a minor eventual consistency artifact into a Denial-of-Service vector.',
-        tradeOffSummary: 'Pros: Masks replication lag. Cons: Blown tail latency, thread starvation, wasted queries on typos.',
-      },
-    ],
+        "seniorRationale": "Retries may help transient conditions but do not establish authority. Bound requests and choose a primary/barrier fallback rather than promising freshness after a fixed sleep.",
+        "tradeOffSummary": "Additional latency and load still leave false negatives possible."
+      }
+    ]
   },
-
-  'redirect-status-codes': {
-    id: 'redirect-status-codes',
-    title: 'Architectural Dilemma: 301 Permanent vs 302/307 Temporary Redirection',
-    scenario: 'Your engineering director asks: "Why are we serving 302/307 instead of 301? Browsers can cache 301 redirects, which would reduce repeat requests!" The service also supports click analytics, link expiration, and destination editing. We need to balance redirect latency and cost against acceptable analytics gaps and update delays.',
-    category: 'HTTP & Edge Protocols',
-    interviewContext: 'Interviewers use this question to test depth in HTTP standards, RFC 9110 semantics, browser caching behavior, and analytics architecture.',
-    options: [
+  "redirect-status-codes": {
+    "id": "redirect-status-codes",
+    "title": "302, browser caching, and mutable destinations",
+    "scenario": "The service allows mutable destinations and expiry, and requires bounded propagation of edits. A colleague proposes caching redirects in browsers to reduce requests. Which policy matches the chosen product?",
+    "category": "HTTP & Caching",
+    "interviewContext": "Defend the chosen guarantee, its authority, failure boundary, capacity assumptions, and operational cost.",
+    "options": [
       {
-        id: 'opt-302-cache-control',
-        title: 'HTTP 302/307 with an Explicit Cache Policy',
-        description: 'Serve HTTP 302 Found (or 307 Temporary). Allow a short browser TTL where missed repeat clicks and delayed edits are acceptable; use no-store for links requiring fresh checks. Cache mappings in Redis to reduce database reads.',
-        isOptimal: true,
-        simulationResult: {
-          metric: 'Browser caching reduces repeat requests but hides cached visits from analytics. Redis caching reduces database reads; analytics completeness also depends on event delivery.',
-          outcome: 'Browser-cached redirects may retain old destinations until freshness expires. Bound TTLs by link expiration and invalidate Redis mappings on edits and takedowns.',
-          impact: 'Cache policy can vary by link requirements; invalidating Redis does not clear a fresh browser-cached redirect.',
+        "id": "opt-302-cache-control",
+        "title": "302 + no-store; cache internal mappings",
+        "description": "Let GET requests reach the app, check validity, then redirect.",
+        "isOptimal": true,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Both paths check state and expiry; internal mappings avoid database reads without letting browsers indefinitely reuse an old destination.",
+          "impact": "Adds a network request per navigation; short internal validity also increases database misses."
         },
-        seniorRationale: '302/307 fits mutable destinations, while Cache-Control defines reuse. Short browser caching is a valid latency/cost tradeoff when its analytics gaps and update delay are acceptable. Redis reduces database load without hiding requests from the service; asynchronous analytics still needs an explicit event-loss policy.',
-        tradeOffSummary: 'Pros: Tunable latency, load, and freshness. Cons: Browser caching hides repeat clicks; event delivery and Redis invalidation need operational care.',
+        "seniorRationale": "Temporary redirect status alone does not forbid caching. no-store prevents redirect reuse, while bounded internal validity and invalidation address mutable mappings. Analytics would require a separate recording policy; headers alone cannot provide complete counts.",
+        "tradeOffSummary": "Adds a network request per navigation; short internal validity also increases database misses."
       },
       {
-        id: 'opt-301-permanent',
-        title: 'HTTP 301 Permanent Redirect without Cache-Control',
-        description: 'Return HTTP 301 Moved Permanently and leave cache freshness to browsers.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Revocation delay: A browser may keep following a cached redirect after the short link is removed, expired, or blocked.',
-          outcome: 'The browser follows the stored destination without contacting the service, bypassing link validity checks and destination updates.',
-          impact: 'A takedown at the service cannot stop an existing browser-cached redirect from sending users to the old destination. Those visits also bypass analytics.',
+        "id": "opt-301-permanent",
+        "title": "301 without explicit cache controls",
+        "description": "Let browsers choose heuristic caching for a mutable destination.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Cached redirects can bypass the service, hiding requests and delaying edits or expiry enforcement.",
+          "impact": "Fewer origin requests, but analytics gaps and stale destinations require a different product promise."
         },
-        seniorRationale: '301 suits permanent destinations and can also use explicit cache headers. For this editable-link service, the main risk is delayed enforcement of takedowns, expiration, and edits while browsers reuse cached redirects. Missing click analytics is a secondary consequence; cacheable 302/307 responses share these risks.',
-        tradeOffSummary: 'Pros: Fewer repeat requests. Cons: Delayed revocation and destination updates; missing analytics for cached clicks.',
-      },
-    ],
+        "seniorRationale": "Permanent redirects can use explicit headers too. The mismatch is unbounded reuse with our selected contract, not that every 301 is forbidden. A cacheable 302 shares the same risk.",
+        "tradeOffSummary": "Fewer origin requests, but analytics gaps and stale destinations require a different product promise."
+      }
+    ]
   },
-
-  'thundering-herd-mitigation': {
-    id: 'thundering-herd-mitigation',
-    title: 'Architectural Dilemma: Thundering Herd & Cache Stampede',
-    scenario: 'A high-profile news outlet publishes a breaking story via your short link. The link expires in Redis at 14:00:00. At 14:00:01, 20,000 concurrent requests arrive in a single second for this single missing key. All 20,000 requests find a cache miss and rush to query PostgreSQL.',
-    category: 'High-Concurrency Caching',
-    interviewContext: 'Staff/Principal interviewers look for knowledge of request coalescing (Go singleflight / Java Guava LoadingCache), mutex locking vs probabilistic early expiration (XFetch algorithm).',
-    options: [
+  "thundering-herd-mitigation": {
+    "id": "thundering-herd-mitigation",
+    "title": "A viral key expires across the fleet",
+    "scenario": "At the illustrative 20,000 requests/s burst, many requests simultaneously miss one hot key. There are N application instances; Redis itself may also be unavailable.",
+    "category": "High-Concurrency Caching",
+    "interviewContext": "Defend the chosen guarantee, its authority, failure boundary, capacity assumptions, and operational cost.",
+    "options": [
       {
-        id: 'opt-singleflight',
-        title: 'In-Process Request Coalescing (Singleflight) + Short Distributed Lock',
-        description: 'Use the Singleflight pattern on application servers: if 500 requests for key "abc" arrive on an app instance simultaneously during a cache miss, only 1 request executes the DB query; the other 499 await its result. Set a 200ms Redis lock to protect against cross-node stampedes.',
-        isOptimal: true,
-        simulationResult: {
-          metric: 'Database queries: Drops from 20,000 queries/sec to 10 queries/sec (99.95% reduction).',
-          outcome: 'Database CPU stays under 5%; p99 latency remains flat (< 15ms) despite massive cache miss surge.',
-          impact: 'Complete immunity against thundering herd crashes.',
+        "id": "opt-singleflight",
+        "title": "Per-instance singleflight + bounded DB admission",
+        "description": "Coalesce in-flight lookups locally and bound each instance’s share of fleet database concurrency; reject overload.",
+        "isOptimal": true,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "One simultaneous cold-key wave can produce up to N database lookups, not one fleet-wide lookup. Later waves and different keys add work.",
+          "impact": "Some requests fail or wait under overload; coalescing is load reduction, not stampede immunity."
         },
-        seniorRationale: 'Singleflight request coalescing collapses thousands of concurrent in-flight requests on the same app worker into a single shared execution promise. Combined with a short Redis lock or probabilistic early background revalidation (XFetch), you guarantee the database never sees more than a handful of queries for any hot key.',
-        tradeOffSummary: 'Pros: Flawless stampede immunity, zero DB CPU spikes. Cons: Requires in-memory concurrent map of active in-flight promises.',
+        "seniorRationale": "An optional distributed refresh lease helps while its store is healthy but cannot be the cache-outage safety net. Bound queues, deadlines, and retries independently.",
+        "tradeOffSummary": "Some requests fail or wait under overload; coalescing is load reduction, not stampede immunity."
       },
       {
-        id: 'opt-db-pool-expand',
-        title: 'Increase DB Connection Pool & Scale Read Replicas',
-        description: 'Increase application connection pool sizes and provision 10 additional PostgreSQL read replicas to absorb the 20,000 concurrent queries.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'DB Connection Thrashing: PostgreSQL CPU spikes to 100% due to lock contention and context switching.',
-          outcome: 'Database connection timeouts occur across ALL endpoints in the system.',
-          impact: 'Massive infrastructure cost increase that fails to prevent the root-cause stampede.',
+        "id": "opt-db-pool-expand",
+        "title": "Expand every connection pool",
+        "description": "Give every instance more database connections and add replicas without bounding misses.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "More capacity may help independent work, but uncontrolled duplicate queries can still consume the budget and worsen queueing.",
+          "impact": "Higher cost and larger downstream concurrency, with no guaranteed tail-latency improvement."
         },
-        seniorRationale: 'Throwing hardware and connection pools at a cache stampede is an anti-pattern. PostgreSQL context switching degrades exponentially when thousands of concurrent connections contend for disk I/O on identical rows.',
-        tradeOffSummary: 'Pros: No application code changes. Cons: Prohibitive server costs, severe connection pool exhaustion, database crash.',
-      },
-    ],
+        "seniorRationale": "Capacity scaling is not inherently wrong; it must be measured and paired with admission. It does not eliminate duplicate hot-key work or replica consistency requirements.",
+        "tradeOffSummary": "Higher cost and larger downstream concurrency, with no guaranteed tail-latency improvement."
+      }
+    ]
   },
-
-  'rate-limiting-placement': {
-    id: 'rate-limiting-placement',
-    title: 'Architectural Dilemma: Rate Limiting & Abuse Prevention Placement',
-    scenario: 'Spam bots are making 5,000 requests/sec attempting to generate shortened links pointing to malware domains, and crawling short codes sequentially to discover private enterprise links. Where should rate limiting and abuse detection be enforced?',
-    category: 'System Protection & Edge Security',
-    interviewContext: 'Evaluates architectural boundary design: what belongs at Edge/CDN/API Gateway vs App Server layer vs Storage layer.',
-    options: [
+  "rate-limiting-placement": {
+    "id": "rate-limiting-placement",
+    "title": "Rate limits and safety checks with clear owners",
+    "scenario": "Bots send an illustrative 5,000 create requests/s and probe public codes. The diagram has redundant ingress and a stateless application fleet. Where do global quotas and destination checks belong?",
+    "category": "Abuse Prevention",
+    "interviewContext": "Defend the chosen guarantee, its authority, failure boundary, capacity assumptions, and operational cost.",
+    "options": [
       {
-        id: 'opt-edge-gateway',
-        title: 'Edge / API Gateway Token Bucket backed by Redis + Webhook Abuse Scanner',
-        description: 'Enforce IP and API-key rate limits at the Edge/API Gateway using Redis Token Bucket before traffic ever reaches app servers. Route created URLs to an async message queue for domain safety reputation scanning.',
-        isOptimal: true,
-        simulationResult: {
-          metric: 'App server CPU offload: 92% of spam requests dropped at the network edge with HTTP 429.',
-          outcome: 'Core app instances and PostgreSQL remain completely shielded from DDoS and spam attacks.',
-          impact: 'Sub-millisecond rejection of bad actors with zero DB write load.',
+        "id": "opt-edge-gateway",
+        "title": "Ingress coarse limits + app-owned quotas and safety",
+        "description": "Drop coarse floods at ingress; enforce authenticated shared quotas and synchronous reputation checks in the app before activation.",
+        "isOptimal": true,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "Requests rejected early save backend work, while owner-aware policy remains consistent across app instances. No fixed rejection percentage is implied.",
+          "impact": "Additional dependencies and false positives affect creation availability; quota identities are not unique humans."
         },
-        seniorRationale: 'Rate limiting should always occur as close to the network edge as possible. By intercepting abusive traffic at the Gateway or Cloudflare Edge, app servers and database connection pools are preserved for legitimate customers.',
-        tradeOffSummary: 'Pros: Maximum backend shielding, scalable edge enforcement, asynchronous malware inspection. Cons: Requires distributed Redis cluster for edge counters.',
+        "seniorRationale": "A load balancer does not automatically supply an API gateway or malware scanner. Explicitly configure ingress controls, replicated limiter state, and fail-closed creation when safety checks are unavailable.",
+        "tradeOffSummary": "Additional dependencies and false positives affect creation availability; quota identities are not unique humans."
       },
       {
-        id: 'opt-app-inmemory',
-        title: 'In-Memory HashMap on Application Servers',
-        description: 'Track request counts per IP in local memory variables (`const ipCounts = new Map()`) on each app server node.',
-        isOptimal: false,
-        simulationResult: {
-          metric: 'Rate limit evasion: 85% of bot traffic bypasses limits due to load balancer round-robin distribution.',
-          outcome: 'If you have 10 app servers, an attacker can send 10x the allowed quota by distributing requests.',
-          impact: 'Memory leakage on app servers tracking millions of unique IP addresses.',
+        "id": "opt-app-inmemory",
+        "title": "Full quota independently on each app instance",
+        "description": "Track a full per-owner allowance in a local map on every server.",
+        "isOptimal": false,
+        "simulationResult": {
+          "metric": "Illustrative expected behavior; not a measured benchmark",
+          "outcome": "With N instances each granting the full allowance, aggregate acceptance can approach N times the intended quota.",
+          "impact": "Avoids a shared lookup but sacrifices global accuracy unless budgets are deliberately partitioned."
         },
-        seniorRationale: 'In-memory rate limiting fails across distributed instances because requests from the same bot land on different backend servers. Furthermore, tracking millions of unique IP keys in local heap leads to garbage collection pauses and OOMs.',
-        tradeOffSummary: 'Pros: Zero external network calls. Cons: Ineffective across clustered backends, vulnerable to memory exhaustion.',
-      },
-    ],
-  },
+        "seniorRationale": "Bounded per-instance shares are useful for emergency capacity control, but independent full quotas are not an exact global limit. Expiry and cardinality caps also matter.",
+        "tradeOffSummary": "Avoids a shared lookup but sacrifices global accuracy unless budgets are deliberately partitioned."
+      }
+    ]
+  }
 };

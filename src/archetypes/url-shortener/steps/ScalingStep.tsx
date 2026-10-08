@@ -1,61 +1,29 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
-import {
-  Card,
-  CardGrid,
-  ConceptLink,
-  DecisionChallenge,
-  InlineCode,
-  List,
-  Paragraph,
-  StepContent,
-  StepSection,
-} from '@/components/lesson/StepComponents';
+import { StepContent, StepSection, Paragraph, DecisionChallenge } from '@/components/lesson/StepComponents';
 import { urlShortenerChallenges } from '../challenges';
 
-export const ScalingStep: FC<StepComponentProps> = ({ onConceptClick }) => {
-  return (
-    <StepContent>
-      <StepSection title="Horizontal Scaling">
-        <Paragraph>
-          As traffic grows, a single application server will eventually run out of CPU or memory. Because our application servers are stateless (they rely on the database and cache for state), we can scale them horizontally by placing them behind a{' '}
-          <ConceptLink conceptId="load-balancer" onConceptClick={onConceptClick}>
-            load balancer
-          </ConceptLink>.
-        </Paragraph>
-      </StepSection>
-
-      <StepSection title="Scaling the Database">
-        <Paragraph>
-          Even with caching, the database remains a critical chokepoint for writes and cache misses. We scale the database in stages:
-        </Paragraph>
-        <List>
-          <li>
-            <strong>Read Replicas:</strong> We can configure a Primary-Replica setup. Writes go to the primary node, while reads (cache misses) go to read replicas. A trade-off here is <em>replication lag</em>: if a user creates a link and immediately queries it on a replica, it might not be there yet.
-          </li>
-          <li>
-            <strong>Partitioning (Sharding):</strong> At extreme scale, when storage or write throughput exceeds a single machine's capacity, we partition the database. For a URL shortener, hashing the <InlineCode>short_code</InlineCode> and distributing records across multiple database nodes is the standard approach.
-          </li>
-        </List>
-      </StepSection>
-
-      <StepSection>
-        <CardGrid>
-          <Card title="Phase 1: Startup">
-            Single App Server, Single Database. Fast iteration, easy deployments, low cost.
-          </Card>
-          <Card title="Phase 2: Growth">
-            Load Balancer, Multiple App Servers, Redis Cache introduced to offload DB reads.
-          </Card>
-          <Card title="Phase 3: Scale">
-            Database Read Replicas, Multi-AZ deployment, automated scaling groups.
-          </Card>
-        </CardGrid>
-      </StepSection>
-
-      <StepSection>
-        <DecisionChallenge challenge={urlShortenerChallenges['rate-limiting-placement']!} />
-      </StepSection>
-    </StepContent>
-  );
-};
+export const ScalingStep: FC<StepComponentProps> = () => (
+  <StepContent>
+    <StepSection title="Horizontal scaling and rate-limit ownership">
+      <Paragraph>{"The load balancer represents redundant ingress distributing traffic across stateless app instances. The application owns authenticated per-owner creation quotas and database fallback budgets. A replicated limiter store with atomic updates is separate from the evictable mapping cache, even if both use Redis. Approximate per-instance shares are a degraded fallback, not exact global quotas."}</Paragraph>
+      <Paragraph>{"Ingress can reject coarse IP/connection floods early, but this is distinct from owner-aware application policy; no invisible API Gateway is assumed. If quota state is unavailable, pause new creates. Redirects retain bounded local capacity budgets and shed excess load. Shared counters, NAT fairness, and attacker identity still require judgment."}</Paragraph>
+    </StepSection>
+    <StepSection title="Write to primary, read from replica">
+      <Paragraph>The diagram shows the selected split: creates and mutations commit on the primary; cache misses query a read replica. Redis still serves valid hits without a database call. Read/Write arrows show the main mapping operations; freshness probes and fallback reuse the existing database connections and are explained in the flow captions. A replica can hide a fresh create or return an old destination after an edit, so reads need more than a fixed sleep or a guess about recent codes.</Paragraph>
+      <Paragraph>On each cache miss, record the lookup start time and obtain a WAL-position barrier from the current primary, tagged with its database lineage and leadership epoch. One implementation samples pg_current_wal_insert_lsn(). Wait until the selected replica’s pg_last_wal_replay_lsn() reaches that barrier on the same lineage, then start a new READ COMMITTED query snapshot. Receiving WAL is insufficient: it must be replayed. Compare positions only within the validated lineage, never blindly across failover.</Paragraph>
+      <Paragraph>Bound the primary probe, replay wait, replica query, and any primary fallback inside one illustrative 200 ms lookup budget and the 300 ms request deadline. Reserve part of the lookup budget for fallback. If the replica cannot catch up, is unavailable, or returns no mapping, query the primary if budget remains. If authority cannot be established, return 503 rather than a false 404 or a stale positive result. Primary confirmation distinguishes real typos from not-yet-replayed creates.</Paragraph>
+      <Paragraph>Cache validity starts before acquiring the barrier, lasts at most 30 seconds, and is capped by link expiry. This prevents a delayed lookup from extending an old version’s lifetime. Mutations committed after the barrier may still be absent from that read, but the original validity deadline bounds their propagation delay. The price is a small primary control query per miss plus replica-wait latency: indexed mapping reads are offloaded, primary dependence is not eliminated. An unguarded replica-read variant can be simpler when the product explicitly accepts replication lag; it does not meet our mutable-link freshness contract.</Paragraph>
+    </StepSection>
+    <StepSection title="Shard only when measurements justify it">
+      <Paragraph>{"At 40 average creates/s, storage size, index residency, backup duration, and hot-key misses may matter before write throughput. Benchmark the 6B-row retention case; a large table is not automatically easy or automatically impossible on one primary. Sharding trades local transactions and simple operations for routing, migration, and multi-shard recovery."}</Paragraph>
+      <Paragraph>{"Use a fixed logical bucket = hash(canonical short_code) mod B and a versioned bucket → shard directory. Every claim for the same case-sensitive code reaches the same current owner, whose local UNIQUE constraint serializes claims. Hashing chooses that owner; it does not itself enforce uniqueness. Route generation retries and custom aliases through the same directory and never accept writes to two bucket owners."}</Paragraph>
+    </StepSection>
+    <StepSection title="Move buckets and preserve operation identity">
+      <Paragraph>{"For a move, copy a consistent bucket snapshot, catch up its log, briefly fence writes and drain in-flight transactions, then atomically publish the new routing epoch. The old owner rejects writes with a stale epoch. Invalidate moved-bucket cache entries and let bounded old reads expire; migrations need rollback and observability, not just a hash-function change."}</Paragraph>
+      <Paragraph>{"Redis can use its own distribution by short_code; physical cache shards need not match database shards, but key identity, versions, and invalidation must. Idempotency routes by (owner, request key), because a random result code is not known initially. A future sharded design needs a durable request coordinator recording the chosen candidate, an idempotent claim at the code shard keyed by that operation, and recovery of unknown claims before changing candidates. A transactional per-shard request table alone cannot provide cross-shard deduplication. We defer this split until its added protocol is justified."}</Paragraph>
+    </StepSection>
+<Paragraph>Replay mechanisms: <a href="https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-REPLICATION" target="_blank" rel="noreferrer">PostgreSQL WAL-position and recovery functions</a>; <a href="https://www.postgresql.org/docs/current/warm-standby.html" target="_blank" rel="noreferrer">standby replay and durability</a>. The per-miss barrier protocol above is our illustrative application design.</Paragraph>
+<DecisionChallenge challenge={urlShortenerChallenges['rate-limiting-placement']!} />
+  </StepContent>
+);

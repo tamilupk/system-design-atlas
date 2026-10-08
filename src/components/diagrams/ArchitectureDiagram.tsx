@@ -312,6 +312,9 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
 
   const currentEvent = activeFlowSequence?.events[currentEventIndex];
 
+  const activeEventEdgeIds = new Set(currentEvent?.edgeIds ?? []);
+  const selectedFlowEdgeIds = new Set(activeFlowSequence?.events.flatMap(event => event.edgeIds) ?? []);
+
   // Single source of truth for emphasis; see `resolveDiagramHighlight` for precedence.
   const { nodeIds: highlightedNodeIds, edgeIds: highlightedEdgeIds, hasHighlight } = resolveDiagramHighlight({
     nodes,
@@ -421,6 +424,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
         {/* Render edges first */}
         <g>
           {edges.map(edge => {
+            if (edge.visibility === 'active-event' && !activeEventEdgeIds.has(edge.id)) return null;
             const fromNode = nodes.find(n => n.id === edge.from);
             const toNode = nodes.find(n => n.id === edge.to);
             if (!fromNode || !toNode) return null;
@@ -438,6 +442,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
                 highlighted={isHighlighted}
                 dimmed={isDimmed}
                 hasReverseEdge={hasReverseEdge}
+                showLabel={diagramState.edgeLabelVisibility !== 'selected-flow' || !activeFlowSequence || selectedFlowEdgeIds.has(edge.id)}
               />
             );
           })}

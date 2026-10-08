@@ -1,122 +1,34 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
-import { CodeBlock } from '@/components/lesson/CodeBlock';
-import { CacheLoadExplorer } from '../components/CacheLoadExplorer';
-import { DecisionChallenge } from '@/components/challenge/DecisionChallenge';
+import { StepContent, StepSection, Paragraph, CodeBlock, DecisionChallenge } from '@/components/lesson/StepComponents';
 import { urlShortenerChallenges } from '../challenges';
-import styles from './StepContent.module.css';
+import { CacheLoadExplorer } from '../components/CacheLoadExplorer';
 
-export const CacheStep: FC<StepComponentProps> = ({ onConceptClick }) => {
-  return (
-    <div className={styles.content}>
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Why Introduce Caching?</h3>
-        <p className={styles.paragraph}>
-          A single modern relational database on SSD storage easily handles 5,000–10,000 indexed primary-key reads per second. A 10:1 read/write ratio alone does <em>not</em> necessitate a cache if average load is 400 reads/sec.
-        </p>
-        <p className={styles.paragraph}>
-          Instead, senior engineers introduce an in-memory{' '}
-          <button 
-            className={styles.conceptLink} 
-            onClick={() => onConceptClick('cache')}
-          >
-            cache
-          </button>{' '}
-          (such as Redis or Memcached) to solve four specific operational realities:
-        </p>
-        <ul className={styles.list}>
-          <li><strong>Peak Traffic Bursts:</strong> Viral links or marketing campaigns generate 10x–50x traffic spikes (e.g. 20,000+ QPS), instantly exhausting database connection pools and IOPS.</li>
-          <li><strong>Strict Latency SLAs:</strong> Serving redirects from RAM takes &lt;1ms (sub-millisecond p99), avoiding 5–20ms disk I/O and query queueing delays.</li>
-          <li><strong>Working Set Efficiency (80/20 Rule):</strong> In URL shortening, ~20% of popular links drive &gt;80% of redirect requests. Keeping this hot working set in memory minimizes database disk operations.</li>
-          <li><strong>Cost Optimization:</strong> Provisioning memory in a Redis cluster is substantially cheaper per IOP than scaling provisioned IOPS on cloud databases.</li>
-        </ul>
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Production Cache-Aside Pattern</h3>
-        <p className={styles.paragraph}>
-          The implementation must isolate cache errors from database lookups, enforce expiration, and bound cache TTL by remaining link lifetime:
-        </p>
-        <CodeBlock
-          language="typescript"
-          code={`interface UrlRecord {
-  long_url: string;
-  expires_at: Date | null;
-}
-
-const DEFAULT_CACHE_TTL_SECONDS = 86400; // 24 hours
-
-async function getLongUrl(shortCode: string): Promise<string | null> {
-  // 1. Try fetching from Cache (isolated with error handling)
-  try {
-    const cachedUrl = await redis.get(shortCode);
-    if (cachedUrl) {
-      return cachedUrl; // Cache Hit (sub-millisecond)
-    }
-  } catch (err) {
-    // Distinguish cache errors/timeouts from cache misses: log and degrade gracefully
-    console.error(\`Cache read failed for \${shortCode}, falling back to DB:\`, err);
-  }
-
-  // 2. Cache Miss or Cache Unavailable: Fallback to Database
-  const dbRecord = await database.query<UrlRecord>(
-    'SELECT long_url, expires_at FROM urls WHERE short_code = $1',
-    [shortCode]
-  );
-
-  if (!dbRecord) {
-    return null; // Link does not exist (404)
-  }
-
-  // 3. Enforce link expiration
-  const now = Date.now();
-  if (dbRecord.expires_at && dbRecord.expires_at.getTime() <= now) {
-    return null; // Link has expired
-  }
-
-  // 4. Calculate bounded TTL: NEVER cache past remaining link lifetime
-  let ttlSeconds = DEFAULT_CACHE_TTL_SECONDS;
-  if (dbRecord.expires_at) {
-    const remainingSeconds = Math.floor((dbRecord.expires_at.getTime() - now) / 1000);
-    ttlSeconds = Math.min(DEFAULT_CACHE_TTL_SECONDS, remainingSeconds);
-  }
-
-  // 5. Populate cache in background (fire-and-forget, non-blocking)
-  // CRITICAL: Database result is preserved even if cache write fails
-  if (ttlSeconds > 0) {
-    redis.set(shortCode, dbRecord.long_url, { EX: ttlSeconds }).catch(err => {
-      console.error(\`Background cache populate failed for \${shortCode}:\`, err);
-    });
-  }
-
-  return dbRecord.long_url;
-}`}
-        />
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Database Protection During Cache Outages</h3>
-        <p className={styles.paragraph}>
-          If Redis crashes or a viral key expires, thousands of concurrent requests miss simultaneously (<strong>Thundering Herd</strong> or <strong>Cache Stampede</strong>). To prevent knocking over the database:
-        </p>
-        <ul className={styles.list}>
-          <li><strong>Singleflight / Request Coalescing:</strong> The app server collapses concurrent identical misses into a single shared database query promise.</li>
-          <li><strong>Probabilistic Early Expiration (XFetch):</strong> Keys are refreshed asynchronously in the background slightly before their TTL expires based on request frequency.</li>
-          <li><strong>Circuit Breakers:</strong> If DB query latency spikes during an outage, the system throttles non-critical requests to maintain availability.</li>
-        </ul>
-      </div>
-
-      <div className={styles.section}>
-        <CacheLoadExplorer />
-      </div>
-
-      <div className={styles.section}>
-        <DecisionChallenge challenge={urlShortenerChallenges['cache-eviction-ttl']!} />
-      </div>
-
-      <div className={styles.section}>
-        <DecisionChallenge challenge={urlShortenerChallenges['thundering-herd-mitigation']!} />
-      </div>
-    </div>
-  );
-};
+export const CacheStep: FC<StepComponentProps> = () => (
+  <StepContent>
+    <StepSection title="Cache the mapping, not the browser redirect">
+      <Paragraph>{"At about 400 average reads/s, a cache is not justified by the 10:1 ratio alone. Benchmark the database with the real index and storage footprint. A 20,000/s burst, hot-key skew, and database headroom may justify Redis. Latency and cost depend on deployment; RAM does not guarantee a universal sub-millisecond p99."}</Paragraph>
+      <Paragraph>{"Chosen HTTP policy: 302 + Cache-Control: no-store on every redirect. Redis is an internal server-side cache, so both hits and misses still reach the application for validity checks. A browser TTL would suppress those requests; a CDN redirect cache would need its own freshness and invalidation policy, which this design does not include."}</Paragraph>
+    </StepSection>
+    <StepSection title="Cache-aside with explicit validity">
+      <Paragraph>Before the scaling step, the only database is the primary. The same cache-aside logic later uses a fresh replica lookup with primary fallback. The lookup adapter must establish freshness before returning a row; TTL alone cannot repair replica lag.</Paragraph>
+      <Paragraph>{"The cache entry includes state, version, absolute expiry, and valid_until. Check validity on cache hits as well as misses. The illustrative internal freshness window is at most 30 seconds, jittered downward to 24–30 seconds and capped by link expiry. Unlike the HTTP response, an internal mapping is intentionally reusable."}</Paragraph>
+      <CodeBlock language="typescript" code={"// Teaching pseudocode: adapters enforce deadlines and validation.\ninterface Mapping {\n  long_url: string;\n  state: 'ACTIVE' | 'DELETED' | 'BLOCKED';\n  version: number;\n  expires_at_ms: number | null;\n}\ninterface CachedMapping { row: Mapping; valid_until_ms: number }\n\nasync function resolve(code: string): Promise<CachedMapping | null> {\n  let entry: CachedMapping | null = null;\n  try {\n    entry = await cacheGet(code, { timeoutMs: 20 });\n  } catch { recordCacheError(); } // error != ordinary miss\n\n  const now = Date.now();\n  if (entry && now < entry.valid_until_ms) {\n    return usable(entry.row, now) ? entry : null;\n  }\n\n  // Baseline: primary read. Scaled: replay-checked replica, else primary.\n  // Per-instance singleflight + bounded fleet DB admission wrap this block.\n  const readStartedAt = Date.now();\n  const row = await freshMappingLookup(code, { timeoutMs: 200 });\n  if (!row || !usable(row, Date.now())) return null;\n\n  // Downward jitter preserves the maximum 30s freshness allowance.\n  const validUntil = Math.min(\n    readStartedAt + randomInteger(24_000, 30_000) - clockErrorAllowanceMs,\n    row.expires_at_ms ?? Infinity\n  );\n  if (Date.now() < validUntil) {\n    // Bounded fill queue; absolute expiry; reject older invalidated versions.\n    // Cache failure must not discard the authoritative result.\n    enqueueBoundedFill(code, { row, valid_until_ms: validUntil });\n  }\n  return { row, valid_until_ms: validUntil };\n}\nfunction usable(row: Mapping, now: number): boolean {\n  return row.state === 'ACTIVE' &&\n    (row.expires_at_ms === null || now < row.expires_at_ms);\n}\n\n// After resolve, on BOTH cache-hit and cache-miss paths:\n// Recheck valid_until, state, and expiry at the decision boundary.\n// If freshness elapsed, re-resolve within deadline or return 503.\n// Return 302 + Location + Cache-Control: no-store.\n// Total request deadline: 300ms; no independent unlimited retries."} />
+      <Paragraph>{"The adapters above are teaching boundaries, not a runnable client library. Cache reads/writes need typed decoding, deadlines, and bounded queues. Use synchronized server clocks, subtract a measured clock-error allowance from the 30-second validity budget, and stop serving cached validity decisions if clock health cannot support the contract. Expiry is checked at decision time; a previously sent redirect cannot be recalled."}</Paragraph>
+    </StepSection>
+    <StepSection title="Edits, deletion, and stale refill races">
+      <Paragraph>{"PATCH, DELETE, and abuse takedown atomically update state/version and append an invalidation outbox record. A retrying application relay deletes the cached value and advances a per-code version floor atomically in Redis. A fill must match or exceed that floor; while the floor is retained, a delayed pre-edit read cannot repopulate the old version after invalidation."}</Paragraph>
+      <Paragraph>{"Retain version floors beyond the maximum old fill lifetime when possible, including request and queue deadlines. Eviction or a Redis restart can remove a floor, so version guards accelerate convergence but are not the hard freshness guarantee. Absolute validity is that boundary. Never extend a fill’s valid_until when a worker retries; use absolute expiration and discard expired fills. Even if invalidation is delayed or lost during cache recovery, freshness-checked values expire by their original 30-second validity limit. Do not restore old values with a fresh TTL. In-flight responses can finish within their request deadline after a change; instantaneous revocation would require a stronger per-request authority check and its availability cost."}</Paragraph>
+      <Paragraph>{"Optional create warmup follows the same rule: capture its validity origin before the create transaction, cap it by expiry, and discard the fill if that deadline has passed. A delayed create response or retry must not give the original destination a fresh 30 seconds after a later edit. The simpler default is to let the first redirect populate the cache."}</Paragraph>
+      <Paragraph>{"Tombstones keep deleted aliases reserved. Expiry does not depend on a cleanup sweep: every decision checks expires_at. Cleanup handles storage reclamation separately and must preserve alias-retention policy. We deliberately avoid negative caching initially, so a just-created code cannot be hidden by a cached 404."}</Paragraph>
+    </StepSection>
+    <StepSection title="Protect the database when Redis fails">
+      <Paragraph>{"Singleflight collapses concurrent identical misses within one process. With N app instances, one cold-key wave can still cause up to N queries, and repeated waves or distinct keys add more. Bound per-instance queues and connection pools; assign fleet-wide database concurrency budgets and shed excess requests with retryable 503 rather than an unbounded fallback storm."}</Paragraph>
+      <Paragraph>{"An optional distributed refresh lease can reduce duplicate fills while Redis is healthy. It cannot protect the database during Redis failure and is not inventory-style correctness authority. Jitter spreads independent expirations but does not remove a single hot-key stampede. Keep fill failures isolated from a successful database read."}</Paragraph>
+    </StepSection>
+<CacheLoadExplorer />
+<DecisionChallenge challenge={urlShortenerChallenges['cache-eviction-ttl']!} />
+<DecisionChallenge challenge={urlShortenerChallenges['thundering-herd-mitigation']!} />
+<Paragraph>HTTP policy reference: <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.5" target="_blank" rel="noreferrer">RFC 9111: no-store</a>.</Paragraph>
+  </StepContent>
+);

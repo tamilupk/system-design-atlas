@@ -1,63 +1,27 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
-import {
-  Callout,
-  InlineCode,
-  List,
-  Paragraph,
-  StepContent,
-  StepSection,
-} from '@/components/lesson/StepComponents';
+import { StepContent, StepSection, Paragraph, Callout } from '@/components/lesson/StepComponents';
 
-export const RequirementsStep: FC<StepComponentProps> = () => {
-  return (
-    <StepContent>
-      <StepSection title="Functional Requirements">
-        <Paragraph>
-          The primary functionality of a URL shortener is straightforward. We need to define exactly what features the system must support to satisfy our users' core needs.
-        </Paragraph>
-        <List>
-          <li>Create a short link from a provided long URL.</li>
-          <li>Redirect a short link to its original long URL counterpart.</li>
-          <li><strong>Optional but common:</strong> Support custom aliases (e.g., <InlineCode>tiny.url/my-custom-name</InlineCode>).</li>
-          <li><strong>Optional but common:</strong> Support expiration times for short links.</li>
-        </List>
-      </StepSection>
-
-      <StepSection title="Non-Functional Requirements">
-        <Paragraph>
-          Beyond just working, the system must operate efficiently at scale. These constraints will heavily influence our architectural decisions.
-        </Paragraph>
-        <List>
-          <li><strong>Low latency redirects:</strong> The redirection process should be near-instantaneous so users don't perceive a delay.</li>
-          <li><strong>High availability:</strong> If the service goes down, millions of external links break simultaneously. Uptime is critical.</li>
-          <li><strong>Security/Unpredictability:</strong> Short codes should be difficult to guess to prevent malicious actors from scraping or enumerating all links.</li>
-        </List>
-      </StepSection>
-
-      <StepSection title="Scale Assumptions & Working Set">
-        <Paragraph>
-          In senior interviews, you must translate monthly aggregates into peak throughput, working-set memory, and multi-year storage:
-        </Paragraph>
-        <List>
-          <li>
-            <strong>Writes:</strong> ~100M new URLs created per month (~40 writes/sec average; design for a 5× peak of ~200 writes/sec).
-          </li>
-          <li>
-            <strong>Reads:</strong> ~1B redirects per month (~400 reads/sec average; viral campaigns and push notifications create 25×–50× peak bursts of <strong>10,000–20,000 reads/sec</strong>).
-          </li>
-          <li>
-            <strong>Working-Set Memory (80/20 Rule):</strong> 20% of URLs drive 80% of reads. 20M hot monthly URLs × 500 bytes ≈ <strong>10 GB RAM</strong>, easily cached in a high-availability Redis pair.
-          </li>
-          <li>
-            <strong>Storage:</strong> 100M URLs × 500 bytes = 50 GB/month (600 GB/year). A 5-year retention window requires ~3 TB total disk storage, easily managed by a single modern PostgreSQL cluster with read replicas before needing sharding.
-          </li>
-        </List>
-      </StepSection>
-
-      <Callout label="Senior System Design Insight">
-        Always distinguish between <em>average load</em> and <em>peak bursts</em>. A single database node can handle 400 reads/sec with ease, but a 20,000 QPS burst during a product launch will saturate database connections unless absorbed by an edge cache tier.
-      </Callout>
-    </StepContent>
-  );
-};
+export const RequirementsStep: FC<StepComponentProps> = () => (
+  <StepContent>
+    <StepSection title="Define the product promise">
+      <Paragraph>{"A link goes viral just as its owner changes the destination. Can we keep redirects fast and honor the edit? Decide which promises must survive caching before drawing Redis."}</Paragraph>
+      <Paragraph>{"Our baseline supports creation, case-sensitive custom aliases, scheduled expiry, and authenticated destination edits and deletion. Codes are public identifiers, not access credentials; sensitive destinations enforce their own authorization."}</Paragraph>
+      <Paragraph>{"Per-link analytics is an optional extension discussed in the trade-offs step, outside the core redirect architecture. The baseline does not promise complete click counts or unique-visitor tracking."}</Paragraph>
+    </StepSection>
+    <StepSection title="One illustrative traffic envelope">
+      <Paragraph>{"Use a 30-day planning month: 100M creations ÷ 2,592,000 seconds ≈ 38.6/s, rounded to 40/s; a 5× peak is about 200/s. 1B redirects ÷ 2,592,000 ≈ 386/s, rounded to 400/s. Explore 25×–50× read bursts of 10,000–20,000/s. These are workload inputs, not benchmark results."}</Paragraph>
+      <Paragraph>{"With no browser or CDN redirect caching, redirect requests reach the service. A 95% Redis hit ratio would reduce 20,000 lookups/s to 1,000 mapping lookups/s. In the scaled design, each miss also requires a primary WAL-position probe and a replica replay check; primary fallbacks add work. The hit ratio is a hypothesis to test, especially with short freshness windows and older links."}</Paragraph>
+    </StepSection>
+    <StepSection title="Working set, storage, and indexes">
+      <Paragraph>{"Budget 500 bytes per logical mapping including a representative destination and metadata. 100M × 500 B = 50 GB/month, 600 GB/year, and 3 TB for 6B rows over five years. Longer URLs change this average. Five years is an illustrative retention choice, not a requirement to retain personal data indefinitely."}</Paragraph>
+      <Paragraph>{"A proposed 10 GB cache fits at most 20M 500-byte payloads before keys, object overhead, fragmentation, replication buffers, and replicas. That is capacity, not expected residency. With the later 30-second validity limit, even 20,000 distinct redirect misses/s produce at most 600,000 live entries (300 MB payload); at 95% hits, 1,000 fills/s × 30s is at most 30,000 entries (15 MB), excluding optional create warmups. Measure burst shape and reuse before provisioning 10 GB. An 80/20 popularity assumption alone establishes neither residency nor hit ratio."}</Paragraph>
+      <Paragraph>{"Illustrative index allowances at 6B rows: 64 B/short-code entry gives 384 GB; 32 B/numeric primary-key entry gives 192 GB. Together with 3 TB of rows that is 3.576 TB per copy, or 10.728 TB for three copies, before bloat, WAL, backups, idempotency records, and analytics. Measure actual index sizes and cache locality. Read replicas add copies; they do not make primary storage or restores free."}</Paragraph>
+    </StepSection>
+    <StepSection title="Service objectives have a boundary">
+      <Paragraph>{"Proposed targets: healthy cache-hit redirect p99 below 100 ms measured from regional ingress to response, excluding public Internet RTT; 99.99% monthly redirect availability gives 30 × 24 × 60 × 0.0001 = 4.32 minutes of error budget. Neither target is a measured result or a global Internet RTT promise."}</Paragraph>
+      <Paragraph>{"Use explicit request budgets rather than invented component benchmarks: illustrative redirect budgets are 20 ms for Redis, 200 ms for the complete database lookup, and a 300 ms overall request deadline. Creation has a separately measured budget for reputation checks and synchronous commit. A timeout budget is not a p99; measure cache-hit and miss distributions separately. The reliability step states the durability and outage compromises."}</Paragraph>
+    </StepSection>
+<Callout label="Defend the assumptions">What changes if takedowns must be instantaneous, or analytics must record every redirect? Both add work to the redirect critical path.</Callout>
+  </StepContent>
+);

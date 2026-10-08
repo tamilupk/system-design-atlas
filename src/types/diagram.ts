@@ -37,6 +37,8 @@ export interface DiagramEdge {
   readonly label?: string;
   readonly style?: 'solid' | 'dashed';
   readonly labelPosition?: number;
+  /** Hide this directed edge except during an event that references it. */
+  readonly visibility?: 'active-event';
 }
 
 export interface FlowEvent {
@@ -57,6 +59,8 @@ export interface DiagramState {
   readonly nodes: readonly DiagramNode[];
   readonly edges: readonly DiagramEdge[];
   readonly flowSequences: readonly FlowSequence[];
+  /** Keep context edges, but label only connections used by the selected flow. */
+  readonly edgeLabelVisibility?: 'selected-flow';
 }
 
 export interface DiagramDefinition {

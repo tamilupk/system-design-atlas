@@ -1,98 +1,34 @@
 import type { FC } from 'react';
 import type { StepComponentProps } from '@/types/lesson';
-import { DecisionChallenge } from '@/components/challenge/DecisionChallenge';
+import { StepContent, StepSection, Paragraph, DecisionChallenge } from '@/components/lesson/StepComponents';
 import { urlShortenerChallenges } from '../challenges';
-import styles from './StepContent.module.css';
 
-export const ReliabilityStep: FC<StepComponentProps> = () => {
-  return (
-    <div className={styles.content}>
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Designing for Failure</h3>
-        <p className={styles.paragraph}>
-          A robust distributed system doesn't just scale; it expects and survives component failures. Let's walk through how our scaled architecture handles various failure scenarios.
-        </p>
-      </div>
+export const ReliabilityStep: FC<StepComponentProps> = () => (
+  <StepContent>
+    <StepSection title="Failure budgets, not invented guarantees">
+      <Paragraph>{"The target is regional service-side cache-hit p99 below 100 ms, not global end-user latency. Redis has an illustrative 20 ms timeout; the complete mapping lookup has a 200 ms budget including primary probe, replica replay wait, query, and fallback. All redirect work fits within a 300 ms overall deadline; this is not the create path’s reputation-check and commit budget. Do not add component p99 values to obtain an end-to-end p99. A write timeout may leave its commit outcome unknown."}</Paragraph>
+      <Paragraph>{"99.99% availability in a 30-day month allows 4.32 minutes unavailable. Cache misses depend on the primary freshness probe and either replica or primary lookup; valid cache hits can continue within their validity bounds. There is no defensible “11 nines” database claim without a specified failure model and evidence."}</Paragraph>
+    </StepSection>
+    <StepSection title="Primary failure and acknowledged writes">
+      <Paragraph>{"Configure synchronous durable copies across selected AZs for mapping commits and fence the old primary before promoting a candidate that contains acknowledged history. The async read replica drawn separately is not automatically eligible. Creation/edits fail or remain unknown until a writable authority is established; retries preserve operation identity."}</Paragraph>
+      <Paragraph>{"Fresh Redis entries may serve redirects only within their original validity and expiry bounds. New misses cannot establish a primary replay barrier during a primary outage, so return 503 even if an async replica remains readable. On failover, fence the old primary, invalidate old leadership epochs, and never compare WAL positions from unrelated histories. Measure failover RTO with fault injection."}</Paragraph>
+      <Paragraph>{"An asynchronous remote copy may lose acknowledged data. Freeze uncertain writes and recover history rather than silently reusing a missing alias. A cached destination cannot reconstruct owners, deletion state, and idempotency records."}</Paragraph>
+    </StepSection>
+    <StepSection title="Replica lag and read-after-create">
+      <Paragraph>{"Replication lag is measured, not bounded by a universal 10–50 or 50–500 ms range. Cache warmup after create is optional. Replay-checked replica reads work for anonymous visitors as well as creators; primary confirmation resolves replica misses. The barrier also prevents stale positive fills after mutations committed before it. Synchronous durable receipt differs from replay visibility on a selected reader."}</Paragraph>
+    </StepSection>
+    <StepSection title="Cache outages and bounded fallback">
+      <Paragraph>{"Cache errors use the same replay-checked replica lookup and bounded primary fallback, with per-process singleflight and fleet capacity limits. A fleet-wide cold start increases both replica reads and primary freshness probes; shed excess work rather than multiplying connections. A circuit breaker bounds failed cache work but does not guarantee seamless availability."}</Paragraph>
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>System Service Level Objectives (SLOs)</h3>
-        <p className={styles.paragraph}>
-          In senior interviews, failure discussions begin with explicit availability and latency boundaries:
-        </p>
-        <ul className={styles.list}>
-          <li><strong>Redirect Latency SLA:</strong> p99 &lt; 15ms globally; p50 &lt; 2ms (served from edge cache or memory).</li>
-          <li><strong>Availability Target:</strong> 99.99% ("four nines" = maximum 4.38 minutes downtime per month).</li>
-          <li><strong>Data Durability:</strong> 99.999999999% (11 nines) — no committed short link is ever permanently lost.</li>
-        </ul>
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>1. Primary Database Failure</h3>
-        <p className={styles.paragraph}>
-          <strong>Failure:</strong> Hardware failure, OS kernel panic, or network loss on the DB primary node.
-        </p>
-        <p className={styles.paragraph}>
-          <strong>Behavior:</strong> Writes (POST /api/urls) fail with HTTP 503. However, <em>redirect reads continue uninterrupted</em> because app servers read from Redis and read replicas. The system gracefully degrades to read-only operation.
-        </p>
-        <p className={styles.paragraph}>
-          <strong>Recovery:</strong> An automated consensus manager (e.g. Patroni, AWS RDS Multi-AZ) elects the most up-to-date read replica, promotes it to primary, and updates DNS/virtual IP. Recovery Time Objective (RTO) is 15–30 seconds.
-        </p>
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>2. Read Replica Failure & Replication Lag</h3>
-        <p className={styles.paragraph}>
-          <strong>Replica Outage:</strong> If a read replica crashes, the database proxy/connection pool redistributes read queries across healthy surviving replicas.
-        </p>
-        <p className={styles.paragraph}>
-          <strong>Replication Lag ("Read-Your-Own-Writes" Hazard):</strong> Asynchronous replication introduces a 50–500ms lag. If a user creates <code className={styles.inlineCode}>/launch</code> and immediately tests it, a cache miss hitting a lagging replica would return an erroneous 404!
-        </p>
-        <p className={styles.paragraph}>
-          <strong>Mitigations:</strong>
-        </p>
-        <ul className={styles.list}>
-          <li><strong>Write-Through Warmup:</strong> The app server populates Redis immediately upon successful creation.</li>
-          <li><strong>Sticky Primary Reads:</strong> Newly created links route read attempts to the primary DB for the first 60 seconds.</li>
-        </ul>
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>3. Redis Cluster Errors vs Total Failure</h3>
-        <p className={styles.paragraph}>
-          <strong>Transient Redis Timeouts:</strong> Cache calls must be bounded by a strict 50ms timeout. A slow or degraded Redis node must <em>never</em> tie up HTTP worker threads.
-        </p>
-        <p className={styles.paragraph}>
-          <strong>Total Cache Outage & Thundering Herd:</strong> If the cache tier restarts empty, thousands of redirect requests miss simultaneously. To protect the database from crashing:
-        </p>
-        <ul className={styles.list}>
-          <li><strong>Singleflight / Mutex Coalescing:</strong> If 500 requests for <code className={styles.inlineCode}>/viral</code> arrive simultaneously, only 1 request queries the DB; the other 499 await that exact result.</li>
-          <li><strong>Adaptive Rate Limiting:</strong> Excess traffic exceeding measured DB capacity is throttled at the API Gateway with HTTP 429 rather than dropping the database cluster.</li>
-        </ul>
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>4. Total Database Loss & Catastrophic Recovery</h3>
-        <p className={styles.paragraph}>
-          If both primary and replicas suffer catastrophic storage corruption, recovery relies on:
-        </p>
-        <ul className={styles.list}>
-          <li><strong>Continuous WAL Archiving:</strong> Write-Ahead Logs are streamed every second to durable object storage (e.g. Amazon S3 / Google Cloud Storage).</li>
-          <li><strong>Point-in-Time Recovery (PITR):</strong> Restore the latest daily base snapshot and replay WAL logs up to the second before corruption. Recovery Point Objective (RPO) &lt; 5 seconds.</li>
-        </ul>
-      </div>
-
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>5. Distributed Link Expiration Sync</h3>
-        <p className={styles.paragraph}>
-          When a link has an explicit expiration timestamp, stale cached entries must not outlive the expiration date. 
-          The cache TTL is computed as <code className={styles.inlineCode}>Math.min(DEFAULT_TTL, expiresAt - now)</code>. 
-          When expired, lookups return HTTP 410 Gone or 404 Not Found consistently across all application layers.
-        </p>
-      </div>
-
-      <div className={styles.section}>
-        <DecisionChallenge challenge={urlShortenerChallenges['replication-lag-race']!} />
-      </div>
-    </div>
-  );
-};
+    </StepSection>
+    <StepSection title="Disaster recovery is a different guarantee">
+      <Paragraph>{"Use tested base backups plus continuous WAL archiving and restore drills. An illustrative archive RPO objective of five seconds means recent commits can be lost if all synchronous copies are destroyed before WAL reaches the archive. Monitor archive age and verify the objective under low traffic, failures, and backup corruption; it is not guaranteed by saying logs are streamed every second. Restore RTO depends on dataset size and replay work."}</Paragraph>
+      <Paragraph>{"Recovery may intentionally stop before a corruption event and lose later transactions. Preserve off-site backups and reconcile against surviving operation records; separate this disaster boundary from single-AZ acknowledged-write durability."}</Paragraph>
+    </StepSection>
+    <StepSection title="Expiration and takedown are different clocks">
+      <Paragraph>{"Both cache hits and freshness-checked database results check absolute expiry at the decision boundary; expired public links return 404. Scheduled expiry does not wait for a sweeper. Mutations use committed invalidation plus the original 30-second validity window. Monitor invalidation lag, replica replay waits, fallback rate, primary probe errors, and clock health. Immediate blocking requires a per-request safety authority."}</Paragraph>
+    </StepSection>
+<DecisionChallenge challenge={urlShortenerChallenges['replication-lag-race']!} />
+<Paragraph>Sources: <a href="https://www.postgresql.org/docs/current/warm-standby.html" target="_blank" rel="noreferrer">PostgreSQL standby durability and replay</a>; <a href="https://www.postgresql.org/docs/current/continuous-archiving.html" target="_blank" rel="noreferrer">WAL archiving and PITR</a>.</Paragraph>
+  </StepContent>
+);

@@ -153,9 +153,13 @@ Diagrams are hand-authored data rendered as inline SVG by React components in `s
 
 **Playback behavior:** when a sequence is playing, a `setInterval` advances one flow event every **1500 ms** and stops at the end of the sequence. A `flowRunId` counter forces a clean restart when the user replays or switches sequences.
 
+**Optional edge decluttering:** A state can set `edgeLabelVisibility: 'selected-flow'` to label only edges used by the selected sequence (all labels remain available when no flow is selected). Edges marked `visibility: 'active-event'` appear only while the current event references them, including paused/manual stepping. URL Shortener’s scaled state uses this for return arrows; other diagrams retain their existing display. Hidden edges remain in the model and keep their original direction and curve geometry.
+
 **Flow tab bar:** the sequence selector is a floating pill bar (`height: 28px`) pinned to the top-left of the canvas. It scrolls horizontally when sequences overflow, and its scrollbar is suppressed across all engines (`scrollbar-width`, `-ms-overflow-style`, and `::-webkit-scrollbar` set to `display: none !important`) so the bar reads as a control strip rather than a scrollable region. The diagram bounds reserve extra space above the top node to keep floating controls from covering the drawing at compact desktop heights.
 
 Chapter lengths are variable: URL Shortener has 9 steps, Real-Time Chat has 12, and Ticket Booking has 14. Manifests, lesson definitions, navigation, progress totals, and prerendering use the actual step list; there is no fixed chapter-length contract.
+
+URL Shortener diagrams focus on the core create and redirect system: client, application, cache, ingress, and databases. Optional click analytics is discussed as a trade-off outside the core diagram and is not a redirect dependency. Redirects use `302` with `no-store`; this is the taught system’s policy, not this application’s production Nginx cache policy. Its scaled diagram shows the classic primary-write/replica-read split; the scaled mutable-link design gates replica lookups on replay of a current-primary WAL barrier and uses bounded primary fallback. The earlier baseline reads its single primary directly. Request and response arrows are explicitly directed through ingress.
 
 ## Lesson Shell
 

@@ -91,19 +91,19 @@ export const replicaExamples: Examples = {
   tech: {
     "shortLabel": "PostgreSQL replica",
     "name": "PostgreSQL streaming read replica",
-    "note": "An asynchronous hot standby offloads reads but may lag. Route read-after-create to the primary when needed; streaming replication does not itself supply safe automatic failover.",
+    "note": "An asynchronous hot standby serves redirect reads in the classic diagram. Replica lag needs an explicit policy; the mutable-link design waits for a primary WAL barrier before replica lookup and falls back to primary. It is neither the synchronous HA copy nor automatically safe to promote.",
     "docsUrl": "https://www.postgresql.org/docs/current/warm-standby.html"
 },
   aws: {
     shortLabel: 'RDS read replica',
     name: 'RDS for PostgreSQL read replica',
-    note: 'Asynchronous replication can return stale data. Route reads explicitly; a read replica is not the same as a Multi-AZ standby.',
+    note: 'This read replica serves redirect lookups when lag is acceptable; mutable-link fills require the replay barrier and bounded primary fallback. It is separate from the explicitly configured synchronous Multi-AZ durability boundary.',
     docsUrl: 'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PostgreSQL.Replication.ReadReplicas.html',
   },
   gcp: {
     shortLabel: 'Cloud SQL replica',
     name: 'Cloud SQL for PostgreSQL read replica',
-    note: 'Read scaling with replication lag. A read replica does not provide automatic failover for the primary.',
+    note: 'Replica read scaling as drawn; mutable-link fills require a replay barrier and bounded primary fallback. A read replica is separate from configured HA and does not provide automatic primary failover.',
     docsUrl: 'https://docs.cloud.google.com/sql/docs/postgres/replication',
   },
 };

@@ -7,6 +7,6 @@ export const urlShortenerMetadata: ArchetypeMetadata = {
   stage: 'foundation',
   sequence: 1,
   availability: 'available',
-  estimatedMinutes: 45,
+  estimatedMinutes: 60,
   tags: ['url-shortener', 'caching', 'database', 'scaling', 'api-design', 'hashing', 'base62'],
 };

@@ -56,11 +56,11 @@ test.describe('System Design Atlas - Core User Journey', () => {
 
     // Interactive CacheLoadExplorer should be visible and working
     await expect(page.getByText('Cache Load Explorer')).toBeVisible();
-    await expect(page.getByText('Estimated DB Reads / sec (with cache):')).toBeVisible();
+    await expect(page.getByText('Mapping lookups / sec (with cache):')).toBeVisible();
 
     // 5. Interact with Decision Challenge
-    await expect(page.getByText('Architectural Dilemma: Redis Eviction & TTL Configuration')).toBeVisible();
-    const optimalOption = page.getByRole('radio', { name: /Volatile-LRU \+ 24h TTL/i });
+    await expect(page.getByText('Redis eviction and bounded freshness')).toBeVisible();
+    const optimalOption = page.getByRole('radio', { name: /Evictable cache \+ downward-jittered validity/i });
     await optimalOption.click();
     const simulateBtn = page.getByRole('button', { name: /Simulate & Evaluate Decision/i }).first();
     await simulateBtn.click();
@@ -71,7 +71,7 @@ test.describe('System Design Atlas - Core User Journey', () => {
     await expect(page.getByRole('tab', { name: /Cache Hit/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /Cache Miss/i })).toBeVisible();
     await page.getByRole('tab', { name: /Cache Miss/i }).click();
-    await expect(page.getByText('Event 1 of 5')).toBeVisible();
+    await expect(page.getByText('Event 1 of 7')).toBeVisible();
 
     // 7. Open Cache concept panel via concept tag
     const cacheConceptLink = page.getByRole('button', { name: 'Cache', exact: true }).first();
@@ -157,21 +157,21 @@ test.describe('System Design Atlas - Core User Journey', () => {
     // The sequence should immediately start playing without clicking play
     const pauseBtn = page.getByRole('button', { name: /Pause flow/i });
     await expect(pauseBtn).toBeVisible();
-    await expect(page.getByText('Event 1 of 5')).toBeVisible();
+    await expect(page.getByText('Event 1 of 7')).toBeVisible();
 
     // Auto-advances to Event 2 after 1.5s interval
-    await expect(page.getByText('Event 2 of 5')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Event 2 of 7')).toBeVisible({ timeout: 3000 });
     await expect(pauseBtn).toBeVisible();
 
     // Auto-advances to Event 3
-    await expect(page.getByText('Event 3 of 5')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Event 3 of 7')).toBeVisible({ timeout: 3000 });
 
     // Capture screenshot of auto-advancing flow
     await page.screenshot({ path: 'test-results/flow-pill-autoplay.png', fullPage: false });
 
     // Click active pill again to restart from Event 1 and keep playing
     await cacheMissTab.click();
-    await expect(page.getByText('Event 1 of 5')).toBeVisible();
+    await expect(page.getByText('Event 1 of 7')).toBeVisible();
     await expect(pauseBtn).toBeVisible();
 
     // Click another flow pill: Cache Hit

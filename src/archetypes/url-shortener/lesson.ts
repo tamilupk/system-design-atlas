@@ -3,7 +3,7 @@ import type { LessonDefinition } from '@/types/lesson';
 export const urlShortenerLesson: LessonDefinition = {
   archetypeId: 'url-shortener',
   title: 'URL Shortener',
-  contentVersion: 1,
+  contentVersion: 2,
   steps: [
     {
       id: 'requirements',

@@ -65,12 +65,12 @@ test.describe('Visual & Responsive Verification', () => {
     }
 
     // Scroll down to Decision Challenge
-    const challengeSection = page.getByText('Architectural Dilemma: Redis Eviction & TTL Configuration');
+    const challengeSection = page.getByText('Redis eviction and bounded freshness');
     await challengeSection.scrollIntoViewIfNeeded();
     await expect(challengeSection).toBeVisible();
 
     // Select optimal option and simulate
-    const optimalOption = page.getByRole('radio', { name: /Volatile-LRU \+ 24h TTL/i });
+    const optimalOption = page.getByRole('radio', { name: /Evictable cache \+ downward-jittered validity/i });
     await optimalOption.click();
     await page.getByRole('button', { name: /Simulate & Evaluate Decision/i }).first().click();
     await expect(page.getByText('Optimal Architectural Decision').first()).toBeVisible();
@@ -176,7 +176,7 @@ test.describe('Visual & Responsive Verification', () => {
     // Navigate to cache step on mobile
     await page.goto('/archetypes/url-shortener/steps/cache');
     await expect(page.getByRole('heading', { level: 1, name: 'Caching Layer' })).toBeVisible();
-    await expect(page.getByText('Architectural Dilemma: Redis Eviction & TTL Configuration')).toBeVisible();
+    await expect(page.getByText('Redis eviction and bounded freshness')).toBeVisible();
 
     await page.screenshot({ path: 'test-results/mobile-375-cache-step.png', fullPage: false });
   });
