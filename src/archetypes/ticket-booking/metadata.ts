@@ -7,7 +7,7 @@ export const ticketBookingMetadata: ArchetypeMetadata = {
   "stage": "foundation",
   "sequence": 8,
   "availability": "available",
-  "estimatedMinutes": 95,
+  "estimatedMinutes": 110,
   "tags": [
     "reservations",
     "concurrency",

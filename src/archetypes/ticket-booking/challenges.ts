@@ -101,7 +101,7 @@ export const ticketBookingChallenges: ChallengeMap = {
     "id": "overload",
     "title": "Where should the queue live?",
     "category": "Correctness under failure",
-    "scenario": "The illustrative burst is 8,333 arrivals/s while the safe tested attempt budget is 360/s. Pending payments are growing.",
+    "scenario": "The illustrative burst is 8,333 arrivals/s. The assumed database ceiling is 360 attempts/s, but the current funnel admits 80/s and yields 20 payment intents/s. Pending payments are growing.",
     "interviewContext": "Senior and staff interviews test the authority, crash window, recovery mechanism, and customer cost behind your choice.",
     "options": [
       {

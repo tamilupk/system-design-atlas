@@ -3,7 +3,7 @@ import type { LessonDefinition } from '@/types/lesson';
 export const ticketBookingLesson: LessonDefinition = {
   "archetypeId": "ticket-booking",
   "title": "Ticket Booking",
-  "contentVersion": 1,
+  "contentVersion": 2,
   "steps": [
     {
       "id": "requirements",

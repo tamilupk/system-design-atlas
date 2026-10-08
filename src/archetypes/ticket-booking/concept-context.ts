@@ -4,11 +4,11 @@ export const ticketBookingConceptContext: ConceptContext = {
   "idempotency": {
     "conceptId": "idempotency",
     "chapterRole": "Replay one operation without creating another hold or charge.",
-    "exampleData": "UNIQUE(event_id, principal_id, operation, key)",
+    "exampleData": "UNIQUE(event_id, purchase_intent_id); UNIQUE(event_id, hold_id)",
     "specificConsiderations": [
       "Bind the key to a canonical request hash and persist its result atomically.",
       "A provider key supplements the local booking ledger; it does not replace it.",
-      "After the supported retry window, reject expired operations instead of replaying them as new."
+      "After HTTP replay expiry, return 410 and resolve the durable purchase intent; a fresh key cannot create a second hold or booking for that intent."
     ]
   },
   "database-index": {
@@ -24,7 +24,7 @@ export const ticketBookingConceptContext: ConceptContext = {
   "cache": {
     "conceptId": "cache",
     "chapterRole": "Serve approximate availability without selling from cached data.",
-    "exampleData": "event snapshot = {version, seat_status}; no buyer identity",
+    "exampleData": "event snapshot = {geometry_version, commit_watermark, generated_at, two_bit_status}; no buyer identity",
     "specificConsiderations": [
       "Versioned updates reject older invalidations or refreshes.",
       "Browser and CDN caches are distinct from an origin cache.",
@@ -37,7 +37,7 @@ export const ticketBookingConceptContext: ConceptContext = {
     "exampleData": "signed admission(event, principal, nonce, expiry)",
     "specificConsiderations": [
       "The ingress box represents a redundant fleet.",
-      "Validate tokens on every mutation and prevent replay.",
+      "Atomically bind each permit nonce to one operation; same-operation retries recover the claim. Pause if replay state is unavailable.",
       "Load balancing distributes requests, not ownership of the same seat."
     ]
   },
@@ -48,7 +48,7 @@ export const ticketBookingConceptContext: ConceptContext = {
     "specificConsiderations": [
       "Workers may execute twice; deduplicate effects.",
       "Do not treat relay acknowledgement as payment success.",
-      "Monitor oldest pending age and reconcile against provider state."
+      "Back off indexed due-work scans, reserve expiry/reconciliation capacity, and monitor oldest pending age against the absolute payment deadline."
     ]
   }
 };
